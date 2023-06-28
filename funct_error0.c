@@ -1,14 +1,4 @@
-#include "shell.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <limits.h>
-#include <errno.h>
-#include <signal.h>
-#include <fcntl.h>
-#include <sys/wait.h>
-#include <sys/types.h>
-#include <sys/stat.h>
+#include "main.h"
 
 /**
  * ccat_cd_err - concatss cd error message
