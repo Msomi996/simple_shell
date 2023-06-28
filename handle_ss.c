@@ -1,126 +1,101 @@
 #include "shell.h"
-#include "stdio.h"
-#include "stdlib.h"
 
 /**
- * main - Super simple shell program that runs shell commands
- * when this program is compiled and executedc reates a  child process
- * and runs the getline system call and reads the imput from stdin.
- * This imput should be the path to an executable
- *
- * Returns: Always 0
+ * bltn_env_help - built-in env help
+ * Return: 0 - null
  */
-int main(int argc, char *argv[], char **env)
+
+void bltn_env_help(void)
 {
-        char *buff = NULL, *prompt = "$ ";
-        size_t buff_size = 0;
-        ssize_t bytes;
-        pid_t wpid;
-        int wstatus;
-        bool from_pipe = false;
-        char **args;
-        char *fullpath;
-        size_t no_of_args;
-        struct stat statbuf;
+	char *text = "env: env [OPTION] [-]";
 
-        while (1 && !from_pipe)
-        {
-                /* check if data is piped into program or entered from terminal */
-                if (isatty(STDIN_FILENO) == 0)
-                        from_pipe = true;
+	write(STDOUT_FILENO, text, _strlen(text));
+	text = "[NAME=VALUE] [COMMAND [ARG]]\n\t";
+	write(STDOUT_FILENO, text, _strlen(text));
+	text = "Print the enviroment of the shell.\n";
+	write(STDOUT_FILENO, text, _strlen(text));
 
-                /* print the prompt sign '$ ' on the terminal */
-                write(STDOUT_FILENO, prompt, 2);
-
-                /* Read data from standard input */
-                bytes = getline(&buff, &buff_size, stdin);
-                if (bytes == -1)
-                {
-                        perror("Error (getline)");
-                        free(buff); /* If getline fails, free memory */
-                        exit(EXIT_FAILURE);
-                }
-                /* Replace the character with a null terminatorl */
-                if (buff[bytes - 1] == '\n')
-                        buff[bytes - 1] = '\0';
- /* Split the argument string into individual words */
-                args = split_string(buff, " ", &no_of_args);
-
-                /* Handle built in command that is entered */
-                if (handle_builtin(args, no_of_args))
-                        continue;
-
-                /* Check if executable exists */
-                if (!check_file_status(args[0], &statbuf))
-                {
-                        /* Look for exacutables in paths */
-                        fullpath = check_file_in_path(args[0], &statbuf);
-                        if (!fullpath)
-                        {
-                                perror("Error (file status)");
-                                free_vector(args, no_of_args);
-                                continue;
-                        }
-                        else
-                        {
-                                /* Replace the first argument with the full path if exist */
-                                free(args[0]);
-                                args[0] = fullpath;
-                        }
-                }
-        }
-
-                /* Create a child process and use it to execute  the command */
-                wpid = fork();
-                if (wpid == -1) /* If fork fails*/
-                {
-                        perror("Error (fork)");
-                        exit(EXIT_FAILURE);
-                }
-                if (wpid == 0) /* child process */
-                        _execute(buff, &statbuf, env);
-
-                /* Parent process should wait for the child process to finish */
-                if (waitpid(wpid, &wstatus, 0) == -1)
-                {
-                        perror("Error (waitpid)");
-                        exit(EXIT_FAILURE);
-                }
-                free_vector(args, no_of_args);
-                free(buff);
-                return (0);
-}
-int _execute(char *arguments, struct stat *statbuf, char **envp)
-{
-        int argc;
-        char **argv;
-
-        argv = split_string(arguments, " ", &argc);
-
-        /* Check if executable file exists */
-        if (!check_file_status(argv[0], statbuf))
-        {
-                perror("Error (file status)");
-                exit(EXIT_FAILURE);
-        }
-
-        execve(argv[0], argv, envp);
-
-        /* Freebthe dynamically allocated argv array */
-        free_vector(argv, argc);
-
-        /* If execve failed */
-        perror("Error (execve)");
-        exit(EXIT_FAILURE);
 }
 
-bool check_file_status(char *pathname, struct stat *statbuf)
+/**
+ * cmp_env_help - etting env help info
+ * Return: 0 - null
+ */
+
+void cmp_env_help(void)
 {
-        int stat_return;
 
-        stat_return = stat(pathname, statbuf);
-        if (stat_return == 0)
-                return (true);
+	char *text = "setenv: usage setenv (const char *name, ";
 
-        return (false);
+	write(STDOUT_FILENO, text, _strlen(text));
+	text = "const char *value, int overwrite)\n";
+	write(STDOUT_FILENO, text, _strlen(text));
+}
+
+/**
+ * rm_env_help - non-set env help info
+ * Return: 0 - null
+ */
+
+void rm_env_help(void)
+{
+	char *text = "unsetenv: usage unsetenv (const char *name)\n\t";
+
+	write(STDOUT_FILENO, text, _strlen(text));
+	text = "Removes an entire entry from environment\n";
+	write(STDOUT_FILENO, text, _strlen(text));
+}
+
+
+/**
+ * builtin_help - first request for 'help' builtin
+ * Return: 0 null
+ */
+
+void builtin_help(void)
+{
+	char *text = ": ) bash, version 1.0(1)-release\n";
+
+	write(STDOUT_FILENO, text, _strlen(text));
+	text = "The commands are internally defined.";
+	write(STDOUT_FILENO, text, _strlen(text));
+	text = "Enter 'help' to see command list";
+	write(STDOUT_FILENO, text, _strlen(text));
+	text = "Enter 'input name' to see more";
+	write(STDOUT_FILENO, text, _strlen(text));
+	text = " about function 'name'.\n\n ";
+	write(STDOUT_FILENO, text, _strlen(text));
+	text = " alias: alias [name[='value'] ...]\n";
+	write(STDOUT_FILENO, text, _strlen(text));
+	text = " cd: usage cd [-L|[-P [-e]] [-@]] [dir]";
+	write(STDOUT_FILENO, text, _strlen(text));
+	text = "[dir]\n";
+	write(STDOUT_FILENO, text, _strlen(text));
+	text = "exit: usage exit [n]\n  ";
+	write(STDOUT_FILENO, text, _strlen(text));
+	text = "env: usage env [OPTION] [-][NAME=VALUE] [COMMAND [ARG]]\n";
+	write(STDOUT_FILENO, text, _strlen(text));
+	text = "  setenv: usage setenv [var name] [value]\n";
+	write(STDOUT_FILENO, text, _strlen(text));
+	text = "  unsetenv: usage unsetenv [var name]\n";
+	write(STDOUT_FILENO, text, _strlen(text));
+}
+
+/**
+ * bltn_exit_help - the built-in exit help info
+ * Return: 0 - null
+ */
+void bltn_exit_help(void)
+{
+	char *text = "exit: usage exit [n]\n";
+
+	write(STDOUT_FILENO, text, _strlen(text));
+	text = " Exits\n";
+	write(STDOUT_FILENO, text, _strlen(text));
+	text = "Exits the shell script with the sxit status specified by n.";
+	write(STDOUT_FILENO, text, _strlen(text));
+	text = " If you omit n, the exit status";
+	write(STDOUT_FILENO, text, _strlen(text));
+	text = "is the status of the last command executed\n";
+	write(STDOUT_FILENO, text, _strlen(text));
 }

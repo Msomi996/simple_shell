@@ -1,35 +1,73 @@
 #include "shell.h"
-#include <stdio.h>
-#include <stdlib.h>
-
-extern char **environ;
 
 /**
- * handle_env - handles the env built in command
- * @env_args: arguments fr the environment command
- * @no_of_args: Number of arguments passed
- * Return: Nothing
+ * check_env_v - evaluates for env variables
+ * @var_e: env var name
+ * @str: name to evaluate
+ * Return: len if equal, 0 if fail
  */
-void handle_en(char **env_args,size_t no_of_args)
-{
-        if (!env_args[1])
-                _print_env();
 
-        free_vector(env_args, no_of_args);
+int check_env_v(const char *var_e, const char *str)
+{
+	int idx;
+
+	for (idx = 0; var_e[idx] != '='; idx++)
+	{
+		if (var_e[idx] != str[idx])
+		{
+			return (0);
+		}
+	}
+	return (idx + 1);
 }
-/**
- * print_env - prints the environment variable
- * Return: Nothing
- */
-void _print_env(void)
-{
-        char **env = environ;
 
-        while (*env != NULL)
-        {
-        size_t len = strlen(*env);
-        write(STDOUT_FILENO, *env, len);
-        write(STDOUT_FILENO, "\n", 1);
-        env++;
-        }
+/**
+ * _env - returns env var
+ * @cli_frame: data
+ * Return: 1 on success
+ */
+
+int _env(cli_data *cli_frame)
+{
+	int idx, idy;
+
+	for (idx = 0; cli_frame->_environ[idx]; idx++)
+	{
+		idy = 0;
+		while (cli_frame->_environ[idx][idy])
+			idy++;
+
+		write(STDOUT_FILENO, cli_frame->_environ[idx], idy);
+		write(STDOUT_FILENO, "\n", 1);
+	}
+	cli_frame->status = 0;
+
+	return (1);
+}
+
+/**
+ * _getenv - gethers correct env variable
+ * @cmd_name: name to evaluate
+ * @_environ: env variable
+ * Return: env var if found, NULL on fail
+ */
+
+char *_getenv(const char *cmd_name, char **_environ)
+{
+	char *str;
+	int idx, count;
+
+	str = NULL;
+	count = 0;
+
+	for (idx = 0; _environ[idx]; idx++)
+	{
+		count = check_env_v(_environ[idx], cmd_name);
+		if (count)
+		{
+			str = _environ[idx];
+			break;
+		}
+	}
+	return (str + count);
 }

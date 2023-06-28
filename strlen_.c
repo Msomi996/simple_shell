@@ -1,22 +1,141 @@
 #include "shell.h"
 
 /**
- * _strlen - counts the length of a string
- * @s: String to be counted
- * Description: this program counts the length of a string
- * by counting each character until the null character
- * is encounted
- *
- * Return: the number of characters in string
+ * num_len - numb length
+ * @n: input num
+ * Return: numb length
  */
-int _strlen(char *s)
-{
-        int count = 0;
 
-        while (*s != '\0')
-        {
-                count++;
-                s++;
-        }
-        return (count);
+int num_len(int n)
+{
+	int count = 1;
+	unsigned int num;
+
+	if (n <= -1)
+	{
+		count++;
+		num = n * -1;
+	}
+	else
+	{
+		num = n;
+	}
+	while (num >= 10)
+	{
+		count++;
+		num = num / 10;
+	}
+
+	return (count);
+}
+
+/**
+ * _to_string - int to string conversion
+ * @n: input numb
+ * Return: value of strng conversion
+ */
+
+char *_to_string(int n)
+{
+	unsigned int num;
+	int count = num_len(n);
+	char *s;
+
+	s = malloc((1 + count) * sizeof(char));
+	if (s == 0)
+		return (NULL);
+
+	*(s + count) = '\0';
+
+	if (n < 0)
+	{
+		num = n * -1;
+		s[0] = '-';
+	}
+	else
+	{
+		num = n;
+	}
+
+	count--;
+	do {
+		*(s + count) = (num % 10) + '0';
+		num = num / 10;
+		count--;
+	}
+	while (num >= 1)
+		;
+
+	return (s);
+}
+
+/**
+ * _atoi - strng to intrgr conversion
+ * @c: str to convert
+ * Return: converted integer
+ */
+
+int _atoi(char *c)
+{
+	unsigned int total = 0;
+	unsigned int curr = 0, res = 0, is_neg = 1;
+	unsigned int idx, mod = 1;
+
+	while (*(c + total) != '\0')
+	{
+		if (curr > 0 && (*(c + total) < '0' || *(c + total) > '9'))
+			break;
+
+		if (*(c + total) == '-')
+		{
+			is_neg *= -1;
+		}
+
+		if ((*(c + total) >= '0') && (*(c + total) <= '9'))
+		{
+			if (curr > 0)
+			{
+				mod *= 10;
+			}
+			curr++;
+		}
+		total++;
+	}
+	for (idx = total - curr; idx < total; idx++)
+	{
+		res = res + ((*(c + idx) - 48) * mod);
+		mod /= 10;
+	}
+
+	return (res * is_neg);
+}
+
+/**
+ * str_revrse - strng reverse
+ * @str: strng to reverse
+ * Return: 0 - null
+ */
+
+void str_revrse(char *str)
+{
+	char *res, curr;
+	int len = 0, idx, idy;
+
+	while (len >= 0)
+	{
+		if (str[len] == '\0')
+			break;
+		len++;
+	}
+	res = str;
+
+	for (idx = 0; idx < (len - 1); idx++)
+	{
+		for (idy = idx + 1; idy > 0; idy--)
+		{
+			curr = *(res + idy);
+			*(res + idy) = *(res + (idy - 1));
+			*(res + (idy - 1)) = curr;
+		}
+	}
 }

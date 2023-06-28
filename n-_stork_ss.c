@@ -1,84 +1,137 @@
 #include "shell.h"
-#include <stdbool.h>
-#include <stdlib.h>
 
 /**
- * split_string - Splits a string into individual words based on a delimiter
- * @str: The string to be split
- * @delimiter: The delimiter used to split the string
- * @count: Pointer to store the number of words found
- *
- * Returns: An array of strings containing the split words
+ * _strlen - presents length of string
+ * @s: input string
+ * Return: 0 on sucess
  */
-char **split_string(const char *str, const char *delimiter, size_t *count)
+
+int _strlen(const char *s)
 {
-    if (str == NULL || delimiter == NULL)
-        return (NULL);
+	int length = 0;
 
-    size_t words_count = 0;
-    const char *str_ptr = str;
+	while (s[length] != 0)
+	{
+		length++;
+	}
+	return (length);
+}
 
-    /* Count the number of words */
-    while (*str_ptr != '\0')
-    {
-        /* Skip leading delimiters */
-        while (*str_ptr != '\0' && strchr(delimiter, *str_ptr) != NULL)
-            str_ptr++;
+/**
+ * _strdup - multiplies string in memory
+ * @str: string pointer
+ * Return: pointer to duplicate string
+ */
 
-        if (*str_ptr != '\0')
-        {
-            words_count++;
-            // Skip the word
-            while (*str_ptr != '\0' && strchr(delimiter, *str_ptr) == NULL)
-                str_ptr++;
-        }
-    }
+char *_strdup(const char *str)
+{
+	size_t length;
+	char *copy;
 
-    *count = words_count;
+	length = _strlen(str);
+	copy = malloc((1 + length) * sizeof(char));
+	if (copy == NULL)
+		return (NULL);
+	_memcpy(copy, str, length + 1);
+	return (copy);
+}
 
-    /* Allocate memory for the array of strings */
-    char **words = malloc((words_count + 1) * sizeof(char *));
-    if (words == NULL)
-        return (NULL);
+/**
+ * _isdigit - evaluates if a string is a number
+ * @s: string to evaluate
+ * Return: 1 on success 0 else
+ */
 
-    words_count = 0;
-    str_ptr = str;
+int _isdigit(const char *s)
+{
+	unsigned int idx;
 
-    /* Split the string into words */
-    while (*str_ptr != '\0')
-    {
-        /* Skip leading delimiters */
-        while (*str_ptr != '\0' && strchr(delimiter, *str_ptr) != NULL)
-            str_ptr++;
+	for (idx = 0; s[idx]; idx++)
+	{
+		if (s[idx] <= 47 || s[idx] >= 58)
+			return (0);
+	}
 
-        if (*str_ptr != '\0')
-        {
-            const char *word_start = str_ptr;
-            /* Find the end of the word */
-            while (*str_ptr != '\0' && strchr(delimiter, *str_ptr) == NULL)
-                str_ptr++;
+	return (1);
+}
 
-            size_t word_length = str_ptr - word_start;
+/**
+ * str_compare - compare string chars
+ * @in: strng to check
+ * @sep: string to compare
+ * Return: if equal 1, else 0
+ */
 
-            /* Allocate memory for the word and copy it */
-            words[words_count] = malloc((word_length + 1) * sizeof(char));
-            if (words[words_count] == NULL)
-            {
-                /* Free the previously allocated memory */
-                for (size_t i = 0; i < words_count; i++)
-                    free(words[i]);
-                free(words);
-                return (NULL);
-            }
+int str_compare(char in[], const char *sep)
+{
+	unsigned int idx, idy, idz;
 
-            strncpy(words[words_count], word_start, word_length);
-            words[words_count][word_length] = '\0';
+	for (idx = 0, idz = 0; in[idx]; idx++)
+	{
+		for (idy = 0; sep[idy]; idy++)
+		{
+			if (in[idx] == sep[idy])
+			{
+				idz++;
+				break;
+			}
+		}
+	}
 
-            words_count++;
-        }
-    }
+	if (idx == idz)
+	{
+		return (1);
+	}
+	return (0);
+}
 
-    words[words_count] = NULL; /* Set the last element to NULL as a marker */
+/**
+ * _strtok - uses delimtr to split string
+ * @in: string to split
+ * @sep: the string delim
+ * Return: split value
+ */
 
-    return (words);
+char *_strtok(char in[], const char *sep)
+{
+	char *begin;
+	unsigned int idx, check;
+	static char *temp, *stop;
+
+	if (in != NULL)
+	{
+		if (str_compare(in, sep))
+			return (NULL);
+		temp = in;
+		idx = _strlen(in);
+		stop = &in[idx];
+	}
+	begin = temp;
+	if (begin == stop)
+		return (NULL);
+	for (check = 0; *temp; temp++)
+	{
+		if (temp != begin)
+			if (*temp && *(temp - 1) == '\0')
+				break;
+		for (idx = 0; sep[idx]; idx++)
+		{
+			if (*temp == sep[idx])
+			{
+				*temp = '\0';
+				if (temp == begin)
+				{
+					begin++;
+				}
+				break;
+			}
+		}
+		if (check == 0 && *temp)
+		{
+			check = 1;
+		}
+	}
+	if (check == 0)
+		return (NULL);
+	return (begin);
 }

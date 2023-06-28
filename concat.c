@@ -1,48 +1,199 @@
 #include "shell.h"
-#include <stdlib.h>
-#include <stdarg.h>
 
 /**
- * *str_concat - a function that concacerates a string
- * @s1: first string
- * @s2: second string
- *
- * Return: concacerated string
+ * check_curr - confirms if ':' is in currnt dir
+ * @pp: pointher to path
+ * @idx: pointer to index
+ * Return: 1 on success 0 on fail
  */
-char *str_concat(char *s1, char *s2)
+
+int check_curr(char *pp, int *idx)
 {
-        int c, u = 0;
-        int len1, len2;
-        char *joined;
+	if (pp[*idx] == ':')
+		return (1);
+	while (pp[*idx] != ':' && pp[*idx])
+	{
+		*idx += 1;
+	}
+	if (pp[*idx])
+		*idx += 1;
+	return (0);
+}
 
-        /*
-         * if string is NULL or empty, length of array should be 1
-         * we must first check for NULL before any other check
-         * else we would get segmentation error if string happens to be NULL
-         */
-        if (s1 == NULL || s1[0] == '\0')
-                len1 = 1;
-        else
-                for (len1 = 0; s1[len1]; len1++) /* Count length of string 1 */
-                        continue;
-        if (s2 == NULL || s2[0] == '\0')
-                len2 = 1;
-        else
-                for (len2 = 0; s2[len2]; len2++) /* count length of string 2 */
-                        continue;
-        /* Allocates memoryy for new array, including null terminator */
-        joined = malloc((sizeof(char) * (len1 + len2)) + 1);
+/**
+ * find_cmd - finds a command
+ * @commnd: cmd name
+ * @_environ: env variable
+ * Return: pointer to cmd
+ */
 
-        /* If allocation fails */
-        if (joined == 0)
-                return (NULL);
+char *find_cmd(char *commnd, char **_environ)
+{
+	struct stat stats;
+	char *pp, *ppp, *p_tok, *wd;
+	int count_d, count_c, idx;
 
-        for (int i = 0; i < len1; i++)
-                joined[i] = s1[i];
-        for  (int i = 0; i < len2; i++)
-                joined[i] = s2[i];
+	pp = _getenv("PATH", _environ);
+	if (pp)
+	{
+		ppp = _strdup(pp);
+		count_c = _strlen(commnd);
+		p_tok = _strtok(ppp, ":");
+		idx = 0;
+		while (p_tok != NULL)
+		{
+			if (check_curr(pp, &idx))
+				if (stat(commnd, &stats) == 0)
+					return (commnd);
+			count_d = _strlen(p_tok);
+			wd = malloc(2 + count_c + count_d);
+			_strcpy(wd, p_tok);
+			_strcat(wd, "/");
+			_strcat(wd, commnd);
+			_strcat(wd, "\0");
+			if (stat(wd, &stats) == 0)
+			{
+				free(ppp);
+				return (wd);
+			}
+			free(wd);
+			p_tok = _strtok(NULL, ":");
+		}
+		free(ppp);
+		if (stat(commnd, &stats) == 0)
+			return (commnd);
+		return (NULL);
+	}
+	if (commnd[0] == '/')
+		if (stat(commnd, &stats) == 0)
+			return (commnd);
+	return (NULL);
+}
 
-        joined[len1 + len2] = '\0';
+/**
+ * check_exec - confirms whether data is executable
+ * @cli_frame: data
+ * Return: exact number if execusionable, 0 else
+ */
 
-        return (joined);
+int check_exec(cli_data *cli_frame)
+{
+	struct stat stats;
+	char *str;
+	int idx;
+
+	str = cli_frame->arguments[0];
+	for (idx = 0; str[idx]; idx++)
+	{
+		if (str[idx] == '.')
+		{
+			if (str[1 + idx] == '.')
+				return (0);
+			if (str[1 + idx] == '/')
+				continue;
+			else
+				break;
+		}
+		else if (str[idx] == '/' && idx != 0)
+		{
+			if (str[1 + idx] == '.')
+				continue;
+			idx++;
+			break;
+		}
+		else
+			break;
+	}
+	if (idx == 0)
+		return (0);
+
+	if (stat(str + idx, &stats) == 0)
+	{
+		return (idx);
+	}
+	call_error(cli_frame, 127);
+
+	return (-1);
+}
+
+/**
+ * verify_access - confirms user access
+ * @wd: directory which to confirm access for
+ * @cli_frame: data
+ * Return: 0 on success or 1 else
+ */
+
+int verify_access(char *wd, cli_data *cli_frame)
+{
+	if (wd == NULL)
+	{
+		call_error(cli_frame, 127);
+		return (1);
+	}
+	if (_strcmp(cli_frame->arguments[0], wd) != 0)
+	{
+		if (access(wd, X_OK) == -1)
+		{
+			call_error(cli_frame, 126);
+			free(wd);
+			return (1);
+		}
+		free(wd);
+	}
+	else
+	{
+		if (access(cli_frame->arguments[0], X_OK) == -1)
+		{
+			call_error(cli_frame, 126);
+			return (1);
+		}
+	}
+	return (0);
+}
+
+/**
+ * exec_cmd_line - exct the cmd line
+ * @cli_frame: data
+ * Return: 1 on success
+ */
+
+int exec_cmd_line(cli_data *cli_frame)
+{
+	char *pth;
+	pid_t pr_id, id_wait;
+	int check, conf;
+	(void) id_wait;
+
+	conf = check_exec(cli_frame);
+	if (conf == -1)
+		return (1);
+	if (conf == 0)
+	{
+		pth = find_cmd(cli_frame->arguments[0], cli_frame->_environ);
+		if (verify_access(pth, cli_frame) == 1)
+			return (1);
+	}
+	pr_id = fork();
+	if (pr_id == 0)
+	{
+		if (conf == 0)
+			pth = find_cmd(cli_frame->arguments[0], cli_frame->_environ);
+		else
+			pth = cli_frame->arguments[0];
+		execve(pth + conf, cli_frame->arguments, cli_frame->_environ);
+	}
+	else if (pr_id < 0)
+	{
+		perror(cli_frame->arg_v[0]);
+		return (1);
+	}
+	else
+	{
+		do {
+			id_wait = waitpid(pr_id, &check, WUNTRACED);
+		} while (!WIFEXITED(check) && !WIFSIGNALED(check));
+	}
+	cli_frame->status = check / 256;
+
+	return (1);
 }
