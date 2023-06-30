@@ -1,125 +1,166 @@
-#include "main.h"
+#include "shell.h"
 
 /**
- * create_cpy - create information from already existing one
- * @item: alias or env name
- * @item_val: alias or env value
- * Return: new value
+ * is_chain - it test if current char in buffer is chain delim
+ *
+ * @info: is the parameter struct
+ *
+ * @buf: is the char buffer
+ *
+ * @p: is address of current position in buf
+ *
+ * Return: 1 if chain delimeter, 0 otherwise
  */
-
-char *create_cpy(char *item, char *item_val)
+int is_chain(info_t *info, char *buf, size_t *p)
 {
-	int count1, count2, total;
-	char *copy;
+	size_t j = *p;
 
-	count1 = _strlen(item);
-	count2 = _strlen(item_val);
-	total = count1 + count2 + 2;
-	copy = malloc(sizeof(char) * (total));
-	_strcpy(copy, item);
-	_strcat(copy, "=");
-	_strcat(copy, item_val);
-	_strcat(copy, "\0");
-
-	return (copy);
-}
-
-/**
- * env_var_set - sets env var
- * @item: env var name
- * @item_val: var value
- * @cli_frame: data
- * Return: none
- */
-
-void env_var_set(char *item, char *item_val, cli_data *cli_frame)
-{
-	int idx;
-	char *env_v, *item_name;
-
-	for (idx = 0; cli_frame->_environ[idx]; idx++)
+	if (buf[j] == '|' && buf[j + 1] == '|')
 	{
-		env_v = _strdup(cli_frame->_environ[idx]);
-		item_name = _strtok(env_v, "=");
-		if (_strcmp(item_name, item) == 0)
-		{
-			free(cli_frame->_environ[idx]);
-			cli_frame->_environ[idx] = create_cpy(item_name, item_val);
-			free(env_v);
-			return;
-		}
-		free(env_v);
+		buf[j] = 0;
+		j++;
+		info->cmd_buf_type = CMD_OR;
 	}
-
-	cli_frame->_environ = realloc_dptr(cli_frame->_environ, idx, (2 + idx) * sizeof(char *));
-	cli_frame->_environ[idx] = create_cpy(item, item_val);
-	cli_frame->_environ[idx + 1] = NULL;
-}
-
-/**
- * cmp_env - checks passed env var
- * @cli_frame: data
- * Return: 1 on success
- */
-
-int cmp_env(cli_data *cli_frame)
-{
-
-	if (cli_frame->arguments[1] == NULL || cli_frame->arguments[2] == NULL)
+	else if (buf[j] == '&' && buf[j + 1] == '&')
 	{
-		call_error(cli_frame, -1);
-		return (1);
+		buf[j] = 0;
+		j++;
+		info->cmd_buf_type = CMD_AND;
 	}
-
-	env_var_set(cli_frame->arguments[1], cli_frame->arguments[2], cli_frame);
+	else if (buf[j] == ';') /* found end of this command */
+	{
+		buf[j] = 0; /* replace semicolon with null */
+		info->cmd_buf_type = CMD_CHAIN;
+	}
+	else
+		return (0);
+	*p = j;
 	return (1);
 }
 
 /**
- * rm_env - removes env var
- * @cli_frame: data
- * Return: 1 on sucess
+ * check_chain - checks if to continue chaining based on last status
+ *
+ * @info: is the parameter struct
+ *
+ * @buf: is the char buffer
+ *
+ * @p: is the address of current position in buf
+ *
+ * @i: is the starting position in buf
+ *
+ * @len: is the length of buf
+ *
+ * Return: Void
  */
-
-int rm_env(cli_data *cli_frame)
+void check_chain(info_t *info, char *buf, size_t *p, size_t i, size_t len)
 {
-	char **env_location;
-	char *env_v, *item_name;
-	int idx, idy, idz;
+	size_t j = *p;
 
-	if (cli_frame->arguments[1] == NULL)
+	if (info->cmd_buf_type == CMD_AND)
 	{
-		call_error(cli_frame, -1);
-		return (1);
-	}
-	idz = -1;
-	for (idx = 0; cli_frame->_environ[idx]; idx++)
-	{
-		env_v = _strdup(cli_frame->_environ[idx]);
-		item_name = _strtok(env_v, "=");
-		if (_strcmp(item_name, cli_frame->arguments[1]) == 0)
+		if (info->status)
 		{
-			idz = idx;
-		}
-		free(env_v);
-	}
-	if (idz == -1)
-	{
-		call_error(cli_frame, -1);
-		return (1);
-	}
-	env_location = malloc(sizeof(char *) * (idx));
-	for (idx = idy = 0; cli_frame->_environ[idx]; idx++)
-	{
-		if (idx != idz)
-		{
-			env_location[idy] = cli_frame->_environ[idx];
-			idy++;
+			buf[i] = 0;
+			j = len;
 		}
 	}
-	env_location[idy] = NULL;
-	free(cli_frame->_environ[idz]);
-	free(cli_frame->_environ);
-	cli_frame->_environ = env_location;
+	if (info->cmd_buf_type == CMD_OR)
+	{
+		if (!info->status)
+		{
+			buf[i] = 0;
+			j = len;
+		}
+	}
+
+	*p = j;
+}
+
+/**
+ * replace_alias - it replaces the aliases in the tokenized string
+ *
+ * @info: is the parameter struct
+ *
+ * Return: 1 if replaced, 0 otherwise
+ */
+int replace_alias(info_t *info)
+{
+	int i;
+	list_t *node;
+	char *p;
+
+	for (i = 0; i < 10; i++)
+	{
+		node = node_starts_with(info->alias, info->argv[0], '=');
+		if (!node)
+			return (0);
+		free(info->argv[0]);
+		p = _strchr(node->str, '=');
+		if (!p)
+			return (0);
+		p = _strdup(p + 1);
+		if (!p)
+			return (0);
+		info->argv[0] = p;
+	}
+	return (1);
+}
+
+/**
+ * replace_vars - replaces vars in the tokenized string
+ *
+ * @info: is the parameter struct
+ *
+ * Return: 1 if replaced, 0 otherwise
+ */
+int replace_vars(info_t *info)
+{
+	int i = 0;
+	list_t *node;
+
+	for (i = 0; info->argv[i]; i++)
+	{
+		if (info->argv[i][0] != '$' || !info->argv[i][1])
+			continue;
+
+		if (!_strcmp(info->argv[i], "$?"))
+		{
+			replace_string(&(info->argv[i]),
+					_strdup(convert_number(info->status, 10, 0)));
+			continue;
+		}
+		if (!_strcmp(info->argv[i], "$$"))
+		{
+			replace_string(&(info->argv[i]),
+					_strdup(convert_number(getpid(), 10, 0)));
+			continue;
+		}
+		node = node_starts_with(info->env, &info->argv[i][1], '=');
+		if (node)
+		{
+			replace_string(&(info->argv[i]),
+					_strdup(_strchr(node->str, '=') + 1));
+			continue;
+		}
+		replace_string(&info->argv[i], _strdup(""));
+
+	}
+	return (0);
+}
+
+/**
+ * replace_string - this replaces the string
+ *
+ * @old: is the address of old string
+ *
+ * @new: is the new string
+ *
+ * Return: 1 for replaced, 0 not replaced
+ */
+int replace_string(char **old, char *new)
+{
+	free(*old);
+	*old = new;
 	return (1);
 }

@@ -1,144 +1,93 @@
-#include "main.h"
+#include "shell.h"
 
 /**
- * ccat_cd_err - concatss cd error message
- * @cli_frame: data
- * @in: input message
- * @msg_e: error message
- * @num: numb of lines for counter
- * Return: correct message
+ * _eputs - prints the input string
+ *
+ * @str: the string is printed
+ *
+ * Return: Nothing
  */
-
-char *ccat_cd_err(cli_data *cli_frame, char *in, char *msg_e, char *num)
+void _eputs(char *str)
 {
-	char *f;
+	int i = 0;
 
-	_strcpy(msg_e, cli_frame->arg_v[0]);
-	_strcat(msg_e, ": ");
-	_strcat(msg_e, num);
-	_strcat(msg_e, ": ");
-	_strcat(msg_e, cli_frame->arguments[0]);
-	_strcat(msg_e, in);
-	if (cli_frame->arguments[1][0] == '-')
+	if (!str)
+		return;
+	while (str[i] != '\0')
 	{
-		f = malloc(3);
-		f[0] = '-';
-		f[1] = cli_frame->arguments[1][1];
-		f[2] = '\0';
-		_strcat(msg_e, f);
-		free(f);
+		_eputchar(str[i]);
+		i++;
 	}
-	else
-	{
-		_strcat(msg_e, cli_frame->arguments[1]);
-	}
-
-	_strcat(msg_e, "\n");
-	_strcat(msg_e, "\0");
-
-	return (msg_e);
 }
 
 /**
- * cd_error - cd comnd error message
- * @cli_frame: data
- * Return: correct message
+ * _eputchar - writes character c to stderr
+ *
+ * @c: is the character to print
+ *
+ * Return: 1 on success.
+ *
+ * On error, return -1, and errno is set appropriately.
  */
-
-char *cd_error(cli_data *cli_frame)
+int _eputchar(char c)
 {
-	int count, n;
-	char *msg_e, *num, *in;
+	static int i;
+	static char buf[WRITE_BUF_SIZE];
 
-	num = _to_string(cli_frame->count);
-	if (cli_frame->arguments[1][0] == '-')
+	if (c == BUF_FLUSH || i >= WRITE_BUF_SIZE)
 	{
-		in = ": Illegal option ";
-		n = 2;
+		write(2, buf, i);
+		i = 0;
 	}
-	else
-	{
-		in = ": can't cd to ";
-		n = _strlen(cli_frame->arguments[1]);
-	}
-
-	count = _strlen(cli_frame->arg_v[0]) + _strlen(cli_frame->arguments[0]);
-	count += _strlen(in) + _strlen(num) + n + 5;
-	msg_e = malloc(sizeof(char) * (count + 1));
-
-	if (msg_e == 0)
-	{
-		free(num);
-		return (NULL);
-	}
-
-	msg_e = ccat_cd_err(cli_frame, in, msg_e, num);
-
-	free(num);
-
-	return (msg_e);
+	if (c != BUF_FLUSH)
+		buf[i++] = c;
+	return (1);
 }
 
 /**
- * cmd_not_found - 'comnd not found' error message
- * @cli_frame: data
- * Return: correct message
+ * _putfd - writes character c to given fd
+ *
+ * @c: is the character to print
+ *
+ * @fd: is the filedescriptor to write to
+ *
+ * Return: 1 on success.
+ *
+ * On error, is return -1, and errno is set appropriately.
  */
-
-char *cmd_not_found(cli_data *cli_frame)
+int _putfd(char c, int fd)
 {
-	int count;
-	char *msg_e, *num;
+	static int i;
+	static char buf[WRITE_BUF_SIZE];
 
-	num = _to_string(cli_frame->count);
-	count = _strlen(cli_frame->arg_v[0]) + _strlen(num);
-	count += _strlen(cli_frame->arguments[0]) + 16;
-	msg_e = malloc(sizeof(char) * (count + 1));
-	if (msg_e == 0)
+	if (c == BUF_FLUSH || i >= WRITE_BUF_SIZE)
 	{
-		free(msg_e);
-		free(num);
-		return (NULL);
+		write(fd, buf, i);
+		i = 0;
 	}
-	_strcpy(msg_e, cli_frame->arg_v[0]);
-	_strcat(msg_e, ": ");
-	_strcat(msg_e, num);
-	_strcat(msg_e, ": ");
-	_strcat(msg_e, cli_frame->arguments[0]);
-	_strcat(msg_e, ": not found\n");
-	_strcat(msg_e, "\0");
-	free(num);
-	return (msg_e);
+	if (c != BUF_FLUSH)
+		buf[i++] = c;
+	return (1);
 }
 
 /**
- * exit_error - 'exit' error message
- * @cli_frame: data
- * Return: correct message
+ * _putsfd - prints input string
+ *
+ * @str: the string to be printed
+ *
+ * @fd: is the filedescriptor to write to
+ *
+ * Return: number of chars put
  */
-
-char *exit_error(cli_data *cli_frame)
+int _putsfd(char *str, int fd)
 {
-	int count;
-	char *msg_e, *num;
+	int i = 0;
 
-	num = _to_string(cli_frame->count);
-	count = _strlen(cli_frame->arg_v[0]) + _strlen(num);
-	count += 23 + _strlen(cli_frame->arguments[0]) + _strlen(cli_frame->arguments[1]);
-	msg_e = malloc((count + 1) * sizeof(char));
-	if (msg_e == 0)
+	if (!str)
+		return (0);
+	while (*str)
 	{
-		free(num);
-		return (NULL);
+		i += _putfd(*str++, fd);
 	}
-	_strcpy(msg_e, cli_frame->arg_v[0]);
-	_strcat(msg_e, ": ");
-	_strcat(msg_e, num);
-	_strcat(msg_e, ": ");
-	_strcat(msg_e, cli_frame->arguments[0]);
-	_strcat(msg_e, ": Illegal digit: ");
-	_strcat(msg_e, cli_frame->arguments[1]);
-	_strcat(msg_e, "\n\0");
-	free(num);
-	return (msg_e);
+	return (i);
 }

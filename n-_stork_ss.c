@@ -1,137 +1,78 @@
-#include "main.h"
+#include "shell.h"
 
 /**
- * _strlen - presents length of string
- * @s: input string
- * Return: 0 on sucess
+ * clear_info - it initializes info_t struct
+ *
+ * @info: is the struct address
  */
-
-int _strlen(const char *s)
+void clear_info(info_t *info)
 {
-	int length = 0;
-
-	while (s[length] != 0)
-	{
-		length++;
-	}
-	return (length);
+	info->arg = NULL;
+	info->argv = NULL;
+	info->path = NULL;
+	info->argc = 0;
 }
 
 /**
- * _strdup - multiplies string in memory
- * @str: string pointer
- * Return: pointer to duplicate string
+ * set_info - it initializes info_t struct
+ *
+ * @info: is struct address
+ *
+ * @av: the argument vector
  */
-
-char *_strdup(const char *str)
+void set_info(info_t *info, char **av)
 {
-	size_t length;
-	char *copy;
+	int i = 0;
 
-	length = _strlen(str);
-	copy = malloc((1 + length) * sizeof(char));
-	if (copy == NULL)
-		return (NULL);
-	_memcpy(copy, str, length + 1);
-	return (copy);
-}
-
-/**
- * _isdigit - evaluates if a string is a number
- * @s: string to evaluate
- * Return: 1 on success 0 else
- */
-
-int _isdigit(const char *s)
-{
-	unsigned int idx;
-
-	for (idx = 0; s[idx]; idx++)
+	info->fname = av[0];
+	if (info->arg)
 	{
-		if (s[idx] <= 47 || s[idx] >= 58)
-			return (0);
-	}
-
-	return (1);
-}
-
-/**
- * str_compare - compare string chars
- * @in: strng to check
- * @sep: string to compare
- * Return: if equal 1, else 0
- */
-
-int str_compare(char in[], const char *sep)
-{
-	unsigned int idx, idy, idz;
-
-	for (idx = 0, idz = 0; in[idx]; idx++)
-	{
-		for (idy = 0; sep[idy]; idy++)
+		info->argv = strtow(info->arg, " \t");
+		if (!info->argv)
 		{
-			if (in[idx] == sep[idy])
+
+			info->argv = malloc(sizeof(char *) * 2);
+			if (info->argv)
 			{
-				idz++;
-				break;
+				info->argv[0] = _strdup(info->arg);
+				info->argv[1] = NULL;
 			}
 		}
-	}
+		for (i = 0; info->argv && info->argv[i]; i++);
+		info->argc = i;
 
-	if (idx == idz)
-	{
-		return (1);
+		replace_alias(info);
+		replace_vars(info);
 	}
-	return (0);
 }
 
 /**
- * _strtok - uses delimtr to split string
- * @in: string to split
- * @sep: the string delim
- * Return: split value
+ * free_info - it frees info_t struct fields
+ *
+ * @info: is the struct address
+ *
+ * @all: is true if freeing all fields
  */
-
-char *_strtok(char in[], const char *sep)
+void free_info(info_t *info, int all)
 {
-	char *begin;
-	unsigned int idx, check;
-	static char *temp, *stop;
-
-	if (in != NULL)
+	ffree(info->argv);
+	info->argv = NULL;
+	info->path = NULL;
+	if (all)
 	{
-		if (str_compare(in, sep))
-			return (NULL);
-		temp = in;
-		idx = _strlen(in);
-		stop = &in[idx];
+		if (!info->cmd_buf)
+			free(info->arg);
+		if (info->env)
+			free_list(&(info->env));
+		if (info->history)
+			free_list(&(info->history));
+		if (info->alias)
+			free_list(&(info->alias));
+		ffree(info->environ);
+		info->environ = NULL;
+		bfree((void **)info->cmd_buf);
+		if (info->readfd > 2)
+			close(info->readfd);
+		_putchar(BUF_FLUSH);
 	}
-	begin = temp;
-	if (begin == stop)
-		return (NULL);
-	for (check = 0; *temp; temp++)
-	{
-		if (temp != begin)
-			if (*temp && *(temp - 1) == '\0')
-				break;
-		for (idx = 0; sep[idx]; idx++)
-		{
-			if (*temp == sep[idx])
-			{
-				*temp = '\0';
-				if (temp == begin)
-				{
-					begin++;
-				}
-				break;
-			}
-		}
-		if (check == 0 && *temp)
-		{
-			check = 1;
-		}
-	}
-	if (check == 0)
-		return (NULL);
-	return (begin);
 }

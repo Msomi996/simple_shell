@@ -1,199 +1,97 @@
-#include "main.h"
+#include "shell.h"
 
 /**
- * check_curr - confirms if ':' is in currnt dir
- * @pp: pointher to path
- * @idx: pointer to index
- * Return: 1 on success 0 on fail
+ * **strtow - splits string into words. Ignores repeated delimiters
+ * @str: the input string
+ * @d: the delimeter string
+ * Return: a pointer to array of strings, or NULL on failure
  */
 
-int check_curr(char *pp, int *idx)
+char **strtow(char *str, char *d)
 {
-	if (pp[*idx] == ':')
-		return (1);
-	while (pp[*idx] != ':' && pp[*idx])
-	{
-		*idx += 1;
-	}
-	if (pp[*idx])
-		*idx += 1;
-	return (0);
-}
+	int i, j, k, m, numwords = 0;
+	char **s;
 
-/**
- * find_cmd - finds a command
- * @commnd: cmd name
- * @_environ: env variable
- * Return: pointer to cmd
- */
-
-char *find_cmd(char *commnd, char **_environ)
-{
-	struct stat stats;
-	char *pp, *ppp, *p_tok, *wd;
-	int count_d, count_c, idx;
-
-	pp = _getenv("PATH", _environ);
-	if (pp)
-	{
-		ppp = _strdup(pp);
-		count_c = _strlen(commnd);
-		p_tok = _strtok(ppp, ":");
-		idx = 0;
-		while (p_tok != NULL)
-		{
-			if (check_curr(pp, &idx))
-				if (stat(commnd, &stats) == 0)
-					return (commnd);
-			count_d = _strlen(p_tok);
-			wd = malloc(2 + count_c + count_d);
-			_strcpy(wd, p_tok);
-			_strcat(wd, "/");
-			_strcat(wd, commnd);
-			_strcat(wd, "\0");
-			if (stat(wd, &stats) == 0)
-			{
-				free(ppp);
-				return (wd);
-			}
-			free(wd);
-			p_tok = _strtok(NULL, ":");
-		}
-		free(ppp);
-		if (stat(commnd, &stats) == 0)
-			return (commnd);
+	if (str == NULL || str[0] == 0)
 		return (NULL);
+	if (!d)
+		d = " ";
+	for (i = 0; str[i] != '\0'; i++)
+		if (!is_delim(str[i], d) && (is_delim(str[i + 1], d) || !str[i + 1]))
+			numwords++;
+
+	if (numwords == 0)
+		return (NULL);
+	s = malloc((1 + numwords) * sizeof(char *));
+	if (!s)
+		return (NULL);
+	for (i = 0, j = 0; j < numwords; j++)
+	{
+		while (is_delim(str[i], d))
+			i++;
+		k = 0;
+		while (!is_delim(str[i + k], d) && str[i + k])
+			k++;
+		s[j] = malloc((k + 1) * sizeof(char));
+		if (!s[j])
+		{
+			for (k = 0; k < j; k++)
+				free(s[k]);
+			free(s);
+			return (NULL);
+		}
+		for (m = 0; m < k; m++)
+			s[j][m] = str[i++];
+		s[j][m] = 0;
 	}
-	if (commnd[0] == '/')
-		if (stat(commnd, &stats) == 0)
-			return (commnd);
-	return (NULL);
+	s[j] = NULL;
+	return (s);
 }
 
 /**
- * check_exec - confirms whether data is executable
- * @cli_frame: data
- * Return: exact number if execusionable, 0 else
+ * **strtow2 - splits string into words
+ *
+ * @str: is the input string
+ *
+ * @d: is the delimeter
+ *
+ * Return: returns pointer to array of strings, or NULL on failure
  */
-
-int check_exec(cli_data *cli_frame)
+char **strtow2(char *str, char d)
 {
-	struct stat stats;
-	char *str;
-	int idx;
+	int i, j, k, m, numwords = 0;
+	char **s;
 
-	str = cli_frame->arguments[0];
-	for (idx = 0; str[idx]; idx++)
+	if (str == NULL || str[0] == 0)
+		return (NULL);
+	for (i = 0; str[i] != '\0'; i++)
+		if ((str[i] != d && str[i + 1] == d) ||
+				    (str[i] != d && !str[i + 1]) || str[i + 1] == d)
+			numwords++;
+	if (numwords == 0)
+		return (NULL);
+	s = malloc((1 + numwords) * sizeof(char *));
+	if (!s)
+		return (NULL);
+	for (i = 0, j = 0; j < numwords; j++)
 	{
-		if (str[idx] == '.')
+		while (str[i] == d && str[i] != d)
+			i++;
+		k = 0;
+		while (str[i + k] != d && str[i + k] && str[i + k] != d)
+			k++;
+		s[j] = malloc((k + 1) * sizeof(char));
+		if (!s[j])
 		{
-			if (str[1 + idx] == '.')
-				return (0);
-			if (str[1 + idx] == '/')
-				continue;
-			else
-				break;
+			for (k = 0; k < j; k++)
+				free(s[k]);
+			free(s);
+			return (NULL);
 		}
-		else if (str[idx] == '/' && idx != 0)
-		{
-			if (str[1 + idx] == '.')
-				continue;
-			idx++;
-			break;
-		}
-		else
-			break;
+		for (m = 0; m < k; m++)
+			s[j][m] = str[i++];
+		s[j][m] = 0;
 	}
-	if (idx == 0)
-		return (0);
-
-	if (stat(str + idx, &stats) == 0)
-	{
-		return (idx);
-	}
-	call_error(cli_frame, 127);
-
-	return (-1);
-}
-
-/**
- * verify_access - confirms user access
- * @wd: directory which to confirm access for
- * @cli_frame: data
- * Return: 0 on success or 1 else
- */
-
-int verify_access(char *wd, cli_data *cli_frame)
-{
-	if (wd == NULL)
-	{
-		call_error(cli_frame, 127);
-		return (1);
-	}
-	if (_strcmp(cli_frame->arguments[0], wd) != 0)
-	{
-		if (access(wd, X_OK) == -1)
-		{
-			call_error(cli_frame, 126);
-			free(wd);
-			return (1);
-		}
-		free(wd);
-	}
-	else
-	{
-		if (access(cli_frame->arguments[0], X_OK) == -1)
-		{
-			call_error(cli_frame, 126);
-			return (1);
-		}
-	}
-	return (0);
-}
-
-/**
- * exec_cmd_line - exct the cmd line
- * @cli_frame: data
- * Return: 1 on success
- */
-
-int exec_cmd_line(cli_data *cli_frame)
-{
-	char *pth;
-	pid_t pr_id, id_wait;
-	int check, conf;
-	(void) id_wait;
-
-	conf = check_exec(cli_frame);
-	if (conf == -1)
-		return (1);
-	if (conf == 0)
-	{
-		pth = find_cmd(cli_frame->arguments[0], cli_frame->_environ);
-		if (verify_access(pth, cli_frame) == 1)
-			return (1);
-	}
-	pr_id = fork();
-	if (pr_id == 0)
-	{
-		if (conf == 0)
-			pth = find_cmd(cli_frame->arguments[0], cli_frame->_environ);
-		else
-			pth = cli_frame->arguments[0];
-		execve(pth + conf, cli_frame->arguments, cli_frame->_environ);
-	}
-	else if (pr_id < 0)
-	{
-		perror(cli_frame->arg_v[0]);
-		return (1);
-	}
-	else
-	{
-		do {
-			id_wait = waitpid(pr_id, &check, WUNTRACED);
-		} while (!WIFEXITED(check) && !WIFSIGNALED(check));
-	}
-	cli_frame->status = check / 256;
-
-	return (1);
+	s[j] = NULL;
+	return (s);
 }

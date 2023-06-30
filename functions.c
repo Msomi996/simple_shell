@@ -1,161 +1,70 @@
-#include "main.h"
+#include "shell.h"
 
 /**
- * cd_home_dir - changes to home dir
- * @cli_frame: data
- * Return: 0 -null
+ * _memset - it fills memory with a constant byte
+ *
+ * @s: is the pointer to the memory area
+ *
+ * @b: is the byte to fill *s with
+ *
+ * @n: is the amount of bytes to be filled
+ *
+ * Return: the (s) a pointer to the memory area s
  */
-
-void cd_home_dir(cli_data *cli_frame)
+char *_memset(char *s, char b, unsigned int n)
 {
-	char *dir_h, *w_dir;
-	char dir_path[PATH_MAX];
+	unsigned int i;
 
-	getcwd(dir_path, sizeof(dir_path));
-	w_dir = _strdup(dir_path);
-
-	dir_h = _getenv("HOME", cli_frame->_environ);
-
-	if (dir_h == NULL)
-	{
-		env_var_set("OLDPWD", w_dir, cli_frame);
-		free(w_dir);
-		return;
-	}
-
-	if (chdir(dir_h) == -1)
-	{
-		call_error(cli_frame, 2);
-		free(w_dir);
-		return;
-	}
-
-	env_var_set("OLDPWD", w_dir, cli_frame);
-	env_var_set("PWD", dir_h, cli_frame);
-	free(w_dir);
-	cli_frame->status = 0;
+	for (i = 0; i < n; i++)
+		s[i] = b;
+	return (s);
 }
 
 /**
- * cd_parent - changes to parent directory
- * @cli_frame: cmd data
- * Return: 0 - null
+ * ffree - this frees a string of strings
+ *
+ * @pp: the string of strings
  */
-
-void cd_parent(cli_data *cli_frame)
+void ffree(char **pp)
 {
-	char *curr_dir, *p_dir, *dir_tok;
-	char dir_path[PATH_MAX];
+	char **a = pp;
 
-	getcwd(dir_path, sizeof(dir_path));
-	p_dir = _strdup(dir_path);
-	env_var_set("OLDPWD", p_dir, cli_frame);
-	curr_dir = cli_frame->arguments[1];
-	if (_strcmp(".", curr_dir) == 0)
-	{
-		env_var_set("PWD", p_dir, cli_frame);
-		free(p_dir);
+	if (!pp)
 		return;
-	}
-	if (_strcmp("/", p_dir) == 0)
-	{
-		free(p_dir);
-		return;
-	}
-	dir_tok = p_dir;
-	str_revrse(dir_tok);
-	dir_tok = _strtok(dir_tok, "/");
-	if (dir_tok != NULL)
-	{
-		dir_tok = _strtok(NULL, "\0");
-
-		if (dir_tok != NULL)
-			str_revrse(dir_tok);
-	}
-	if (dir_tok != NULL)
-	{
-		chdir(dir_tok);
-		env_var_set("PWD", dir_tok, cli_frame);
-	}
-	else
-	{
-		chdir("/");
-		env_var_set("PWD", "/", cli_frame);
-	}
-	cli_frame->status = 0;
-	free(p_dir);
+	while (*pp)
+		free(*pp++);
+	free(a);
 }
 
 /**
- * cd_dir - changes to given directory
- * @cli_frame: data
- * Return: 0 - null
+ * _realloc - it reallocates a block of memory
+ *
+ * @ptr: pointer to previous malloc'ated block
+ *
+ * @old_size: is byte size of previous block
+ *
+ * @new_size: byte size of new block
+ *
+ * Return: pointer to da ol'block nameen.
  */
-
-void cd_dir(cli_data *cli_frame)
+void *_realloc(void *ptr, unsigned int old_size, unsigned int new_size)
 {
-	char *curr_dir, *w_dir, *g_dir;
-	char dir_path[PATH_MAX];
+	char *p;
 
-	getcwd(dir_path, sizeof(dir_path));
+	if (!ptr)
+		return (malloc(new_size));
+	if (!new_size)
+		return (free(ptr), NULL);
+	if (new_size == old_size)
+		return (ptr);
 
-	curr_dir = cli_frame->arguments[1];
-	if (chdir(curr_dir) == -1)
-	{
-		call_error(cli_frame, 2);
-		return;
-	}
+	p = malloc(new_size);
+	if (!p)
+		return (NULL);
 
-	w_dir = _strdup(dir_path);
-	env_var_set("OLDPWD", w_dir, cli_frame);
-
-	g_dir = _strdup(curr_dir);
-	env_var_set("PWD", g_dir, cli_frame);
-
-	free(w_dir);
-	free(g_dir);
-
-	cli_frame->status = 0;
-	chdir(curr_dir);
-}
-
-/**
- * cd_before - changes to prev directory
- * @cli_frame: data
- * Return: 0 - null
- */
-
-void cd_before(cli_data *cli_frame)
-{
-	char *dir_p, *dir_old_p, *dir_g, *old_dir_g;
-	char curr_dir[PATH_MAX];
-
-	getcwd(curr_dir, sizeof(curr_dir));
-	dir_g = _strdup(curr_dir);
-
-	dir_old_p = _getenv("OLDPWD", cli_frame->_environ);
-
-	if (dir_old_p == NULL)
-		old_dir_g = dir_g;
-	else
-		old_dir_g = _strdup(dir_old_p);
-
-	env_var_set("OLDPWD", dir_g, cli_frame);
-
-	if (chdir(old_dir_g) == -1)
-		env_var_set("PWD", dir_g, cli_frame);
-	else
-		env_var_set("PWD", old_dir_g, cli_frame);
-
-	dir_p = _getenv("PWD", cli_frame->_environ);
-
-	write(STDOUT_FILENO, dir_p, _strlen(dir_p));
-	write(STDOUT_FILENO, "\n", 1);
-
-	free(dir_g);
-	if (dir_old_p)
-		free(old_dir_g);
-
-	cli_frame->status = 0;
-	chdir(dir_p);
+	old_size = old_size < new_size ? old_size : new_size;
+	while (old_size--)
+		p[old_size] = ((char *)ptr)[old_size];
+	free(ptr);
+	return (p);
 }

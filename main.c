@@ -1,72 +1,44 @@
 #include "shell.h"
 
 /**
- * free_struct - releases shell struct
- * @cli_frame: shell struct
- * Return: 0 - null
+ * main - is entry point
+ * @ac: is arg count
+ * @av: is arg vector
+ *
+ * Return: 0 on success, 1 on error
  */
-
-void free_struct(cli_data *cli_frame)
+int main(int ac, char **av)
 {
-	unsigned int idx;
+	info_t info[] = { INFO_INIT };
+	int fd = 2;
 
-	for (idx = 0; cli_frame->_environ[idx]; idx++)
+	asm ("mov %1, %0\n\t"
+			"add $3, %0"
+			: "=r" (fd)
+			: "r" (fd));
+
+	if (ac == 2)
 	{
-		free(cli_frame->_environ[idx]);
+		fd = open(av[1], O_RDONLY);
+		if (fd == -1)
+		{
+			if (errno == EACCES)
+				exit(126);
+			if (errno == ENOENT)
+			{
+				_eputs(av[0]);
+				_eputs(": 0: Can't open ");
+				_eputs(av[1]);
+				_eputchar('\n');
+				_eputchar(BUF_FLUSH);
+				exit(127);
+			}
+			return (EXIT_FAILURE);
+		}
+		info->readfd = fd;
 	}
-
-	free(cli_frame->_environ);
-	free(cli_frame->shell_id);
-}
-
-/**
- * set_struct - sets shell struct
- * @cli_frame: shell struct
- * @arg_v: arg vector
- * Return: 0 - null
- */
-
-void set_struct(cli_data *cli_frame, char **arg_v)
-{
-	unsigned int idx = 0;
-
-	cli_frame->arg_v = arg_v;
-	cli_frame->count = 1;
-	cli_frame->status = 0;
-	cli_frame->input = NULL;
-	cli_frame->arguments = NULL;
-
-	while (environ[idx])
-		idx++;
-
-	cli_frame->_environ = malloc(sizeof(char *) * (idx + 1));
-
-	for (idx = 0; environ[idx]; idx++)
-	{
-		cli_frame->_environ[idx] = _strdup(environ[idx]);
-	}
-
-	cli_frame->_environ[idx] = NULL;
-	cli_frame->shell_id = _to_string(getpid());
-}
-
-/**
- * main - Entry function
- * @arg_c: argument count
- * @arg_v: argument vector
- * Return: 0 on success
- */
-
-int main(int arg_c, char **arg_v)
-{
-	cli_data cli_frame;
-	(void) arg_c;
-
-	signal(SIGINT, hndl_ctrl_c);
-	set_struct(&cli_frame, arg_v);
-	itr_cmd_l(&cli_frame);
-	free_struct(&cli_frame);
-	if (cli_frame.status < 0)
-		return (255);
-	return (cli_frame.status);
+	populate_env_list(info);
+	read_history(info);
+	hsh(info, av);
+	return (EXIT_SUCCESS);
 }

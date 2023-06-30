@@ -1,45 +1,107 @@
-#include "main.h"
+#include "shell.h"
 
 /**
- * help_info - 'help' help information
- * Return: 0 - null
+ * _myenv - prints the current environment
+ *
+ * @info: Structure containing potential arguments. Maintains
+ *
+ * constant function prototype.
+ *
+ * Return: 0 Always
  */
-
-void help_info(void)
+int _myenv(info_t *info)
 {
-	char *text = "help: help [-dms] [pattern ...]\n\t";
-
-	write(STDOUT_FILENO, text, _strlen(text));
-	text = "You can view information for built-ins commands.\n ";
-	write(STDOUT_FILENO, text, _strlen(text));
-	text = "You can view brief summaries of bash built-ins.\n";
-	write(STDOUT_FILENO, text, _strlen(text));
+	print_list_str(info->env);
+	return (0);
 }
 
 /**
- * alias_help_info - 'alias' help information
- * Return: 0 - null
+ * _getenv - gets value of environ variable
+ *
+ * @info: Structure containing potential arguments. Maintains
+ *
+ * @name: is env var name
+ *
+ * Return: the value
  */
-
-void alias_help_info(void)
+char *_getenv(info_t *info, const char *name)
 {
-	char *text = "alias: alias [name[='value'] ...]\n\t";
+	list_t *node = info->env;
+	char *p;
 
-	write(STDOUT_FILENO, text, _strlen(text));
-	text = "You can either define or display aliases.\n ";
-	write(STDOUT_FILENO, text, _strlen(text));
+	while (node)
+	{
+		p = starts_with(node->str, name);
+		if (p && *p)
+			return (p);
+		node = node->next;
+	}
+	return (NULL);
 }
 
 /**
- * cd_help_info - 'cd' help information
- * Return: 0 - null
+ * _mysetenv - Initialize a my new environment variable,
+ *
+ * or modify an existing one
+ *
+ * @info: Structure containing potential arguments. Maintains
+ *
+ * constant function prototype.
+ *
+ * Return: 0 Always
  */
-
-void cd_help_info(void)
+int _mysetenv(info_t *info)
 {
-	char *text = "cd: usage cd [-L|[-P [-e]] [-@]] [dir]\n\t";
+	if (info->argc != 3)
+	{
+		_eputs("Incorrect number of arguements\n");
+		return (1);
+	}
+	if (_setenv(info, info->argv[1], info->argv[2]))
+		return (0);
+	return (1);
+}
 
-	write(STDOUT_FILENO, text, _strlen(text));
-	text = "Change current working directory to specified location\n ";
-	write(STDOUT_FILENO, text, _strlen(text));
+/**
+ * _myunsetenv - Remove variable
+ *
+ * @info: Structure containing potential arguments. Maintains
+ *
+ * constant function prototype.
+ *
+ * Return: 0 Always
+ */
+int _myunsetenv(info_t *info)
+{
+	int i;
+
+	if (info->argc == 1)
+	{
+		_eputs("Too few arguements.\n");
+		return (1);
+	}
+	for (i = 1; i <= info->argc; i++)
+		_unsetenv(info, info->argv[i]);
+
+	return (0);
+}
+
+/**
+ * populate_env_list - populates environment linked list
+ *
+ * @info: Structure containing potential arguments. Maintains
+ *
+ * constant function prototype.
+ *
+ * Return: 0 Always
+ */
+int populate_env_list(info_t *info)
+{
+	list_t *node = NULL;
+	size_t i;
+
+	for (i = 0; environ[i]; i++)
+		add_node_end(&node, environ[i], 0);
+	info->env = node;
+	return (0);
 }

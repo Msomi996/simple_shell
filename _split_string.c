@@ -1,137 +1,82 @@
-#include "main.h"
+#include "shell.h"
 
 /**
- * _strlen - gethers length of string
- * @s: input string
- * Return: 0
+ * _strlen - it returns the string length
+ *
+ * @s: is the string whose length to check
+ *
+ * Return: integer length of the string
  */
-
-int _strlen(const char *s)
+int _strlen(char *s)
 {
-	int length = 0;
+	int i = 0;
 
-	while (s[length] != 0)
-	{
-		length++;
-	}
-	return (length);
+	if (!s)
+		return (0);
+
+	while (*s++)
+		i++;
+	return (i);
 }
 
 /**
- * _strdup - multiplies string in memory
- * @str: string pointer
- * Return: pointer to multiply string
+ * _strcmp - performs lexicogarphic comparison of two strings.
+ *
+ * @s1: is the first string
+ *
+ * @s2: is the second string
+ *
+ * Return: negative for s1 < s2, positive for s1 > s2, zero for s1 == s2
  */
-
-char *_strdup(const char *str)
+int _strcmp(char *s1, char *s2)
 {
-	size_t length;
-	char *copy;
-
-	length = _strlen(str);
-	copy = malloc((1 + length) * sizeof(char));
-	if (copy == NULL)
-		return (NULL);
-	_memcpy(copy, str, length + 1);
-	return (copy);
+	while (*s1 && *s2)
+	{
+		if (*s1 != *s2)
+			return (*s1 - *s2);
+		s1++;
+		s2++;
+	}
+	if (*s1 == *s2)
+		return (0);
+	else
+		return (*s1 < *s2 ? -1 : 1);
 }
 
 /**
- * _isdigit - evaluates if a string is a number
- * @s: string to check
- * Return: 1 on success, else 0
+ * starts_with - will check if needle starts with haystack
+ *
+ * @haystack: is string to search
+ *
+ * @needle: is the substring to find
+ *
+ * Return: the address of next char of haystack or NULL
  */
-
-int _isdigit(const char *s)
+char *starts_with(const char *haystack, const char *needle)
 {
-	unsigned int idx;
-
-	for (idx = 0; s[idx]; idx++)
-	{
-		if (s[idx] <= 47 || s[idx] >= 58)
-			return (0);
-	}
-
-	return (1);
-}
-
-/**
- * str_compare - compare string chars
- * @in: strng to check
- * @sep: string to compare
- * Return: if equal 1, else 0
- */
-
-int str_compare(char in[], const char *sep)
-{
-	unsigned int idx, idy, idz;
-
-	for (idx = 0, idz = 0; in[idx]; idx++)
-	{
-		for (idy = 0; sep[idy]; idy++)
-		{
-			if (in[idx] == sep[idy])
-			{
-				idz++;
-				break;
-			}
-		}
-	}
-
-	if (idx == idz)
-	{
-		return (1);
-	}
-	return (0);
-}
-
-/**
- * _strtok - uses delimitr to split string
- * @in: string to split
- * @sep: the string delm
- * Return: split value
- */
-
-char *_strtok(char in[], const char *sep)
-{
-	char *begin;
-	unsigned int idx, check;
-	static char *temp, *stop;
-
-	if (in != NULL)
-	{
-		if (str_compare(in, sep))
+	while (*needle)
+		if (*needle++ != *haystack++)
 			return (NULL);
-		temp = in;
-		idx = _strlen(in);
-		stop = &in[idx];
-	}
-	begin = temp;
-	if (begin == stop)
-		return (NULL);
-	for (check = 0; *temp; temp++)
-	{
-		if (temp != begin)
-			if (*temp && *(temp - 1) == '\0')
-				break;
-		for (idx = 0; sep[idx]; idx++)
-		{
-			if (*temp == sep[idx])
-			{
-				*temp = '\0';
-				if (temp == begin)
-				{
-					begin++;
-				}
-				break;
-			}
-		}
-		if (check == 0 && *temp)
-		{
-			check = 1;
-		}
-	}
-	if (check == 0)
-		return (NULL);
-	return (begin);
+	return ((char *)haystack);
+}
+
+/**
+ * _strcat - it concatenates two strings
+ *
+ * @dest: is the destination buffer
+ *
+ * @src: is the source buffer
+ *
+ * Return: is the pointer to destination buffer
+ */
+char *_strcat(char *dest, char *src)
+{
+	char *ret = dest;
+
+	while (*dest)
+		dest++;
+	while (*src)
+		*dest++ = *src++;
+	*dest = *src;
+	return (ret);
 }

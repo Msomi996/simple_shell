@@ -1,101 +1,106 @@
-#include "main.h"
+#include "shell.h"
 
 /**
- * bltn_env_help - built-in env help
- * Return: 0 - null
+ * get_environ - returns string array copy of environ
+ *
+ * @info: Structure contain potential arguments. Maintains
+ *
+ * constant function prototype.
+ *
+ * Return: 0 Always
  */
-
-void bltn_env_help(void)
+char **get_environ(info_t *info)
 {
-	char *text = "env: env [OPTION] [-]";
+	if (!info->environ || info->env_changed)
+	{
+		info->environ = list_to_strings(info->env);
+		info->env_changed = 0;
+	}
 
-	write(STDOUT_FILENO, text, _strlen(text));
-	text = "[NAME=VALUE] [COMMAND [ARG]]\n\t";
-	write(STDOUT_FILENO, text, _strlen(text));
-	text = "Print the enviroment of the shell.\n";
-	write(STDOUT_FILENO, text, _strlen(text));
-
+	return (info->environ);
 }
 
 /**
- * cmp_env_help - etting env help info
- * Return: 0 - null
+ * _unsetenv - Remove environment variable
+ *
+ * @info: Structure contains potential arguments. Maintains
+ *
+ * constant function prototype.
+ *
+ * Return: 1 on delete, 0 otherwise
+ *
+ * @var: the string env var property
  */
-
-void cmp_env_help(void)
+int _unsetenv(info_t *info, char *var)
 {
+	list_t *node = info->env;
+	size_t i = 0;
+	char *p;
 
-	char *text = "setenv: usage setenv (const char *name, ";
+	if (!node || !var)
+		return (0);
 
-	write(STDOUT_FILENO, text, _strlen(text));
-	text = "const char *value, int overwrite)\n";
-	write(STDOUT_FILENO, text, _strlen(text));
+	while (node)
+	{
+		p = starts_with(node->str, var);
+		if (p && *p == '=')
+		{
+			info->env_changed = delete_node_at_index(&(info->env), i);
+			i = 0;
+			node = info->env;
+			continue;
+		}
+		node = node->next;
+		i++;
+	}
+	return (info->env_changed);
 }
 
 /**
- * rm_env_help - non-set env help info
- * Return: 0 - null
+ * _setenv - Initialize a new environment var,
+ *
+ * or modify an existing one
+ *
+ * @info: Structure contains potential arguments. Maintains
+ *
+ * constant function prototype.
+ *
+ * @var: the string env var property
+ *
+ * @value: the string env var value
+ *
+ * Return: 0 Always
  */
-
-void rm_env_help(void)
+int _setenv(info_t *info, char *var, char *value)
 {
-	char *text = "unsetenv: usage unsetenv (const char *name)\n\t";
+	char *buf = NULL;
+	list_t *node;
+	char *p;
 
-	write(STDOUT_FILENO, text, _strlen(text));
-	text = "Removes an entire entry from environment\n";
-	write(STDOUT_FILENO, text, _strlen(text));
-}
+	if (!var || !value)
+		return (0);
 
-
-/**
- * builtin_help - first request for 'help' builtin
- * Return: 0 null
- */
-
-void builtin_help(void)
-{
-	char *text = ": ) bash, version 1.0(1)-release\n";
-
-	write(STDOUT_FILENO, text, _strlen(text));
-	text = "The commands are internally defined.";
-	write(STDOUT_FILENO, text, _strlen(text));
-	text = "Enter 'help' to see command list";
-	write(STDOUT_FILENO, text, _strlen(text));
-	text = "Enter 'input name' to see more";
-	write(STDOUT_FILENO, text, _strlen(text));
-	text = " about function 'name'.\n\n ";
-	write(STDOUT_FILENO, text, _strlen(text));
-	text = " alias: alias [name[='value'] ...]\n";
-	write(STDOUT_FILENO, text, _strlen(text));
-	text = " cd: usage cd [-L|[-P [-e]] [-@]] [dir]";
-	write(STDOUT_FILENO, text, _strlen(text));
-	text = "[dir]\n";
-	write(STDOUT_FILENO, text, _strlen(text));
-	text = "exit: usage exit [n]\n  ";
-	write(STDOUT_FILENO, text, _strlen(text));
-	text = "env: usage env [OPTION] [-][NAME=VALUE] [COMMAND [ARG]]\n";
-	write(STDOUT_FILENO, text, _strlen(text));
-	text = "  setenv: usage setenv [var name] [value]\n";
-	write(STDOUT_FILENO, text, _strlen(text));
-	text = "  unsetenv: usage unsetenv [var name]\n";
-	write(STDOUT_FILENO, text, _strlen(text));
-}
-
-/**
- * bltn_exit_help - the built-in exit help info
- * Return: 0 - null
- */
-void bltn_exit_help(void)
-{
-	char *text = "exit: usage exit [n]\n";
-
-	write(STDOUT_FILENO, text, _strlen(text));
-	text = " Exits\n";
-	write(STDOUT_FILENO, text, _strlen(text));
-	text = "Exits the shell script with the sxit status specified by n.";
-	write(STDOUT_FILENO, text, _strlen(text));
-	text = " If you omit n, the exit status";
-	write(STDOUT_FILENO, text, _strlen(text));
-	text = "is the status of the last command executed\n";
-	write(STDOUT_FILENO, text, _strlen(text));
+	buf = malloc(_strlen(var) + _strlen(value) + 2);
+	if (!buf)
+		return (1);
+	_strcpy(buf, var);
+	_strcat(buf, "=");
+	_strcat(buf, value);
+	node = info->env;
+	while (node)
+	{
+		p = starts_with(node->str, var);
+		if (p && *p == '=')
+		{
+			free(node->str);
+			node->str = buf;
+			info->env_changed = 1;
+			return (0);
+		}
+		node = node->next;
+	}
+	add_node_end(&(info->env), buf, 0);
+	free(buf);
+	info->env_changed = 1;
+	return (0);
 }

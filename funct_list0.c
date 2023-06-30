@@ -1,144 +1,169 @@
-#include "main.h"
+#include "shell.h"
 
 /**
- * ccat_cd_err - concatss cd error message
- * @cli_frame: data
- * @in: adds message
- * @msg_e: error message
- * @num: numb of lines for counter
- * Return: correct message
+ * add_node - adds node to beginning of list
+ *
+ * @head: address pointer to head node
+ *
+ * @str: str field of node
+ *
+ * @num: node index used by history
+ *
+ * Return: list size
  */
 
-char *ccat_cd_err(cli_data *cli_frame, char *in, char *msg_e, char *num)
+list_t *add_node(list_t **head, const char *str, int num)
 {
-	char *f;
+	list_t *new_head;
 
-	_strcpy(msg_e, cli_frame->arg_v[0]);
-	_strcat(msg_e, ": ");
-	_strcat(msg_e, num);
-	_strcat(msg_e, ": ");
-	_strcat(msg_e, cli_frame->arguments[0]);
-	_strcat(msg_e, in);
-	if (cli_frame->arguments[1][0] == '-')
+	if (!head)
+		return (NULL);
+	new_head = malloc(sizeof(list_t));
+	if (!new_head)
+		return (NULL);
+	_memset((void *)new_head, 0, sizeof(list_t));
+	new_head->num = num;
+	if (str)
 	{
-		f = malloc(3);
-		f[0] = '-';
-		f[1] = cli_frame->arguments[1][1];
-		f[2] = '\0';
-		_strcat(msg_e, f);
-		free(f);
+		new_head->str = _strdup(str);
+		if (!new_head->str)
+		{
+			free(new_head);
+			return (NULL);
+		}
+	}
+	new_head->next = *head;
+	*head = new_head;
+	return (new_head);
+}
+/**
+ * add_node_end - adds node to the end of list
+ *
+ * @head: is address of pointer to head node
+ *
+ * @str: is str field of node
+ *
+ * @num: is node index used by history
+ *
+ * Return: the size of list
+ */
+
+list_t *add_node_end(list_t **head, const char *str, int num)
+{
+	list_t *new_node, *node;
+
+	if (!head)
+		return (NULL);
+	node = *head;
+	new_node = malloc(sizeof(list_t));
+	if (!new_node)
+		return (NULL);
+	_memset((void *)new_node, 0, sizeof(list_t));
+	new_node->num = num;
+	if (str)
+	{
+		new_node->str = _strdup(str);
+		if (!new_node->str)
+		{
+			free(new_node);
+			return (NULL);
+		}
+	}
+	if (node)
+	{
+		while (node->next)
+			node = node->next;
+		node->next = new_node;
 	}
 	else
-	{
-		_strcat(msg_e, cli_frame->arguments[1]);
-	}
-
-	_strcat(msg_e, "\n");
-	_strcat(msg_e, "\0");
-
-	return (msg_e);
+		*head = new_node;
+	return (new_node);
 }
 
 /**
- * cd_error - cd comnd error message
- * @cli_frame: data
- * Return: correct message
+ * print_list_str - it prints the str element of list_t linked list
+ *
+ * @h: the pointer to first node
+ *
+ * Return: the size of list
  */
-
-char *cd_error(cli_data *cli_frame)
+size_t print_list_str(const list_t *h)
 {
-	int count, n;
-	char *msg_e, *num, *in;
+	size_t i = 0;
 
-	num = _to_string(cli_frame->count);
-	if (cli_frame->arguments[1][0] == '-')
+	while (h)
 	{
-		in = ": Illegal option ";
-		n = 2;
+		_puts(h->str ? h->str : "(nil)");
+		_puts("\n");
+		h = h->next;
+		i++;
 	}
-	else
-	{
-		in = ": can't cd to ";
-		n = _strlen(cli_frame->arguments[1]);
-	}
-
-	count = _strlen(cli_frame->arg_v[0]) + _strlen(cli_frame->arguments[0]);
-	count += _strlen(in) + _strlen(num) + n + 5;
-	msg_e = malloc(sizeof(char) * (count + 1));
-
-	if (msg_e == 0)
-	{
-		free(num);
-		return (NULL);
-	}
-
-	msg_e = ccat_cd_err(cli_frame, in, msg_e, num);
-
-	free(num);
-
-	return (msg_e);
+	return (i);
 }
 
 /**
- * cmd_not_found - 'comnd not found' error message
- * @cli_frame: data
- * Return: correct message
+ * delete_node_at_index - it deletes node at index
+ *
+ * @head: is the address of pointer to first node
+ *
+ * @index: is index of node to delete
+ *
+ * Return: 1 on success, 0 on failure
  */
-
-char *cmd_not_found(cli_data *cli_frame)
+int delete_node_at_index(list_t **head, unsigned int index)
 {
-	int count;
-	char *msg_e, *num;
+	list_t *node, *prev_node;
+	unsigned int i = 0;
 
-	num = _to_string(cli_frame->count);
-	count = _strlen(cli_frame->arg_v[0]) + _strlen(num);
-	count += _strlen(cli_frame->arguments[0]) + 16;
-	msg_e = malloc(sizeof(char) * (count + 1));
-	if (msg_e == 0)
+	if (!head || !*head)
+		return (0);
+
+	if (!index)
 	{
-		free(msg_e);
-		free(num);
-		return (NULL);
+		node = *head;
+		*head = (*head)->next;
+		free(node->str);
+		free(node);
+		return (1);
 	}
-	_strcpy(msg_e, cli_frame->arg_v[0]);
-	_strcat(msg_e, ": ");
-	_strcat(msg_e, num);
-	_strcat(msg_e, ": ");
-	_strcat(msg_e, cli_frame->arguments[0]);
-	_strcat(msg_e, ": not found\n");
-	_strcat(msg_e, "\0");
-	free(num);
-	return (msg_e);
+	node = *head;
+	while (node)
+	{
+		if (i == index)
+		{
+			prev_node->next = node->next;
+			free(node->str);
+			free(node);
+			return (1);
+		}
+		i++;
+		prev_node = node;
+		node = node->next;
+	}
+	return (0);
 }
 
 /**
- * exit_error - 'exit' error message
- * @cli_frame: data
- * Return: correct message
+ * free_list - it frees all nodes of list
+ *
+ * @head_ptr: is address of pointer to head node
+ *
+ * Return: void
  */
-
-char *exit_error(cli_data *cli_frame)
+void free_list(list_t **head_ptr)
 {
-	int count;
-	char *msg_e, *num;
+	list_t *node, *next_node, *head;
 
-	num = _to_string(cli_frame->count);
-	count = _strlen(cli_frame->arg_v[0]) + _strlen(num);
-	count += 23 + _strlen(cli_frame->arguments[0]) + _strlen(cli_frame->arguments[1]);
-	msg_e = malloc((count + 1) * sizeof(char));
-	if (msg_e == 0)
+	if (!head_ptr || !*head_ptr)
+		return;
+	head = *head_ptr;
+	node = head;
+	while (node)
 	{
-		free(num);
-		return (NULL);
+		next_node = node->next;
+		free(node->str);
+		free(node);
+		node = next_node;
 	}
-	_strcpy(msg_e, cli_frame->arg_v[0]);
-	_strcat(msg_e, ": ");
-	_strcat(msg_e, num);
-	_strcat(msg_e, ": ");
-	_strcat(msg_e, cli_frame->arguments[0]);
-	_strcat(msg_e, ": Illegal digit: ");
-	_strcat(msg_e, cli_frame->arguments[1]);
-	_strcat(msg_e, "\n\0");
-	free(num);
-	return (msg_e);
+	*head_ptr = NULL;
 }

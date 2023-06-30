@@ -1,141 +1,127 @@
-#include "main.h"
+#include "shell.h"
 
 /**
- * num_len - numb length
- * @n: input num
- * Return: numb length
+ * _myhistory - displays my history list, one command per line, preceded
+ *
+ * by line numbers, starting at 0.
+ *
+ * @info: Structure containing potential arguments. Maintains
+ *
+ * constant function prototype.
+ *
+ * Return: 0 Always
  */
-
-int num_len(int n)
+int _myhistory(info_t *info)
 {
-	int count = 1;
-	unsigned int num;
-
-	if (n <= -1)
-	{
-		count++;
-		num = n * -1;
-	}
-	else
-	{
-		num = n;
-	}
-	while (num >= 10)
-	{
-		count++;
-		num = num / 10;
-	}
-
-	return (count);
+	print_list(info->history);
+	return (0);
 }
 
 /**
- * _to_string - int to string conversion
- * @n: input numb
- * Return: value of strng conversion
+ * unset_alias - sets the alias to string
+ *
+ * @info: is parameter struct
+ *
+ * @str: is the string alias
+ *
+ * Return: 0 always on success, 1 on error
  */
-
-char *_to_string(int n)
+int unset_alias(info_t *info, char *str)
 {
-	unsigned int num;
-	int count = num_len(n);
-	char *s;
+	char *p, c;
+	int ret;
 
-	s = malloc((1 + count) * sizeof(char));
-	if (s == 0)
-		return (NULL);
-
-	*(s + count) = '\0';
-
-	if (n < 0)
-	{
-		num = n * -1;
-		s[0] = '-';
-	}
-	else
-	{
-		num = n;
-	}
-
-	count--;
-	do {
-		*(s + count) = (num % 10) + '0';
-		num = num / 10;
-		count--;
-	}
-	while (num >= 1)
-		;
-
-	return (s);
+	p = _strchr(str, '=');
+	if (!p)
+		return (1);
+	c = *p;
+	*p = 0;
+	ret = delete_node_at_index(&(info->alias),
+			get_node_index(info->alias, node_starts_with(info->alias, str, -1)));
+	*p = c;
+	return (ret);
 }
 
 /**
- * _atoi - strng to intrgr conversion
- * @c: str to convert
- * Return: converted integer
+ * set_alias - sets alias to string
+ *
+ * @info: is parameter struct
+ *
+ * @str: the string alias
+ *
+ * Return: 0 Always on success, 1 on error
  */
-
-int _atoi(char *c)
+int set_alias(info_t *info, char *str)
 {
-	unsigned int total = 0;
-	unsigned int curr = 0, res = 0, is_neg = 1;
-	unsigned int idx, mod = 1;
+	char *p;
 
-	while (*(c + total) != '\0')
-	{
-		if (curr > 0 && (*(c + total) < '0' || *(c + total) > '9'))
-			break;
+	p = _strchr(str, '=');
+	if (!p)
+		return (1);
+	if (!*++p)
+		return (unset_alias(info, str));
 
-		if (*(c + total) == '-')
-		{
-			is_neg *= -1;
-		}
-
-		if ((*(c + total) >= '0') && (*(c + total) <= '9'))
-		{
-			if (curr > 0)
-			{
-				mod *= 10;
-			}
-			curr++;
-		}
-		total++;
-	}
-	for (idx = total - curr; idx < total; idx++)
-	{
-		res = res + ((*(c + idx) - 48) * mod);
-		mod /= 10;
-	}
-
-	return (res * is_neg);
+	unset_alias(info, str);
+	return (add_node_end(&(info->alias), str, 0) == NULL);
 }
 
 /**
- * str_revrse - strng reverse
- * @str: strng to reverse
- * Return: 0 - null
+ * print_alias - will prints an alias string
+ *
+ * @node: is the alias node
+ *
+ * Return: 0 Always on success, 1 on error
  */
-
-void str_revrse(char *str)
+int print_alias(list_t *node)
 {
-	char *res, curr;
-	int len = 0, idx, idy;
+	char *p = NULL, *a = NULL;
 
-	while (len >= 0)
+	if (node)
 	{
-		if (str[len] == '\0')
-			break;
-		len++;
+		p = _strchr(node->str, '=');
+		for (a = node->str; a <= p; a++)
+			_putchar(*a);
+		_putchar('\'');
+		_puts(p + 1);
+		_puts("'\n");
+		return (0);
 	}
-	res = str;
+	return (1);
+}
 
-	for (idx = 0; idx < (len - 1); idx++)
+/**
+ * _myalias - mimics the alias builtin
+ *
+ * @info: Structure contains potential arguments. Maintains
+ *
+ * constant function prototype.
+ *
+ * Return: 0 Always
+ */
+int _myalias(info_t *info)
+{
+	int i = 0;
+	char *p = NULL;
+	list_t *node = NULL;
+
+	if (info->argc == 1)
 	{
-		for (idy = idx + 1; idy > 0; idy--)
+		node = info->alias;
+		while (node)
 		{
-			curr = *(res + idy);
-			*(res + idy) = *(res + (idy - 1));
-			*(res + (idy - 1)) = curr;
+			print_alias(node);
+			node = node->next;
 		}
+		return (0);
 	}
+	for (i = 1; info->argv[i]; i++)
+	{
+		p = _strchr(info->argv[i], '=');
+		if (p)
+			set_alias(info, info->argv[i]);
+		else
+			print_alias(node_starts_with(info->alias, info->argv[i], '='));
+	}
+
+	return (0);
 }

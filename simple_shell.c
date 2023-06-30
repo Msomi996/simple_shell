@@ -1,56 +1,107 @@
-#include "main.h"
+#include "shell.h"
 
 /**
- * read_in_str - evaluates string from input
- * @last: getline return value
- * Return: string value
+ * _myexit - exits the shell
+ *
+ * @info: Structure containing potential arguments. Used to maintain
+ *
+ * constant function prototype.
+ *
+ * Return: exits with a given exit status
+ *
+ * (0) if info.argv[0] != "exit"
  */
-
-char *read_in_str(int *last)
+int _myexit(info_t *info)
 {
-	char *str = NULL;
-	size_t size_of_buf = 0;
+	int exitcheck;
 
-	*last = getline(&str, &size_of_buf, stdin);
-
-	return (str);
+	if (info->argv[1])  /* If there is an exit arguement */
+	{
+		exitcheck = _erratoi(info->argv[1]);
+		if (exitcheck == -1)
+		{
+			info->status = 2;
+			print_error(info, "Illegal number: ");
+			_eputs(info->argv[1]);
+			_eputchar('\n');
+			return (1);
+		}
+		info->err_num = _erratoi(info->argv[1]);
+		return (-2);
+	}
+	info->err_num = -1;
+	return (-2);
 }
 
 /**
- * main_exit - shell exit function
- * @cli_frame: input data
- * Return: 0 on success
+ * _mycd - changes my current directory process
+ *
+ * @info: Structure containing potential arguments. Maintains
+ *
+ * constant function prototype.
+ *
+ * Return: 0 Always
  */
-
-int main_exit(cli_data *cli_frame)
+int _mycd(info_t *info)
 {
-	unsigned int stat_check;
-	int check_num, len, is_large;
+	char *s, *dir, buffer[1024];
+	int chdir_ret;
 
-	if (cli_frame->arguments[1] != NULL)
+	s = getcwd(buffer, 1024);
+	if (!s)
+		_puts("TODO: >>getcwd failure emsg here<<\n");
+	if (!info->argv[1])
 	{
-		stat_check = _atoi(cli_frame->arguments[1]);
-		check_num = _isdigit(cli_frame->arguments[1]);
-		len = _strlen(cli_frame->arguments[1]);
-		is_large = stat_check > (unsigned int)INT_MAX;
-		if (len > 10 || !check_num || is_large)
+		dir = _getenv(info, "HOME=");
+		if (!dir)
+			chdir_ret = /* TODO: what should this be? */
+				chdir((dir = _getenv(info, "PWD=")) ? dir : "/");
+		else
+			chdir_ret = chdir(dir);
+	}
+	else if (_strcmp(info->argv[1], "-") == 0)
+	{
+		if (!_getenv(info, "OLDPWD="))
 		{
-			call_error(cli_frame, 2);
-			cli_frame->status = 2;
+			_puts(s);
+			_putchar('\n');
 			return (1);
 		}
-		cli_frame->status = (stat_check % 256);
+		_puts(_getenv(info, "OLDPWD=")), _putchar('\n');
+		chdir_ret = /* TODO: what should this be? */
+			chdir((dir = _getenv(info, "OLDPWD=")) ? dir : "/");
+	}
+	else
+		chdir_ret = chdir(info->argv[1]);
+	if (chdir_ret == -1)
+	{
+		print_error(info, "can't cd to ");
+		_eputs(info->argv[1]), _eputchar('\n');
+	}
+	else
+	{
+		_setenv(info, "OLDPWD", _getenv(info, "PWD="));
+		_setenv(info, "PWD", getcwd(buffer, 1024));
 	}
 	return (0);
 }
 
 /**
- * hndl_ctrl_c - looks after the 'ctrl + C' call
- * @signal: handles signal
+ * _myhelp - changes my current directory process
+ *
+ * @info: the structure contain potential arguments. Maintains
+ *
+ * constant function prototype.
+ *
+ * Return: 0 Always
  */
-
-void hndl_ctrl_c(int signal)
+int _myhelp(info_t *info)
 {
-	(void)signal;
-	write(STDOUT_FILENO, "\n: ) ", 5);
+	char **arg_array;
+
+	arg_array = info->argv;
+	_puts("help call works. Function not yet implemented \n");
+	if (0)
+		_puts(*arg_array); /* temp att_unused workaround */
+	return (0);
 }

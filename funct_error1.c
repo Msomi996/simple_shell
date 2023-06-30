@@ -1,110 +1,153 @@
-#include "main.h"
+#include "shell.h"
 
 /**
- * call_error - request appriopriate error message
- * @cli_frame: data
- * @err_v: value of error
- * Return: correct error message
+ * _erratoi - it converts a string to an integer
+ *
+ * @s: is the string to be converted
+ *
+ * Return: 0 if no numbers in string, convert number otherwise
+ *
+ * -1 on error
  */
-
-int call_error(cli_data *cli_frame, int err_v)
+int _erratoi(char *s)
 {
-	char *msg_e;
+	int i = 0;
+	unsigned long int result = 0;
 
-	switch (err_v)
+	if (*s == '+')
+		s++;  /* TODO: why do this make main return 255? */
+	for (i = 0;  s[i] != '\0'; i++)
 	{
-	case -1:
-		msg_e = env_error(cli_frame);
-		break;
-	case 2:
-		if (_strcmp("exit", cli_frame->arguments[0]) == 0)
-			msg_e = exit_error(cli_frame);
-		else if (_strcmp("cd", cli_frame->arguments[0]) == 0)
-			msg_e = cd_error(cli_frame);
-		break;
-	case 126:
-		msg_e = fail_error(cli_frame);
-		break;
-	case 127:
-		msg_e = cmd_not_found(cli_frame);
-		break;
+		if (s[i] >= '0' && s[i] <= '9')
+		{
+			result *= 10;
+			result += (s[i] - '0');
+			if (result > INT_MAX)
+				return (-1);
+		}
+		else
+			return (-1);
 	}
-
-	if (msg_e)
-	{
-		write(STDERR_FILENO, msg_e, _strlen(msg_e));
-		free(msg_e);
-	}
-
-	cli_frame->status = err_v;
-	return (err_v);
+	return (result);
 }
 
 /**
- * env_error - 'env' error message
- * @cli_frame: data
- * Return: correct error message
+ * print_error - prints error message
+ *
+ * @info: is parameter & return info struct
+ *
+ * @estr: is string contains specified error type
+ *
+ * Return: 0 if no numbers in string, convert number otherwise
+ *
+ * -1 on error
  */
-
-char *env_error(cli_data *cli_frame)
+void print_error(info_t *info, char *estr)
 {
-	int count;
-	char *msg_e, *num, *in;
-
-	num = _to_string(cli_frame->count);
-	in = ": Can't add or remove from environment\n";
-	count = _strlen(cli_frame->arg_v[0]) + _strlen(num);
-	count += _strlen(cli_frame->arguments[0]) + _strlen(in) + 4;
-	msg_e = malloc(sizeof(char) * (count + 1));
-	if (msg_e == 0)
-	{
-		free(msg_e);
-		free(num);
-		return (NULL);
-	}
-
-	_strcpy(msg_e, cli_frame->arg_v[0]);
-	_strcat(msg_e, ": ");
-	_strcat(msg_e, num);
-	_strcat(msg_e, ": ");
-	_strcat(msg_e, cli_frame->arguments[0]);
-	_strcat(msg_e, in);
-	_strcat(msg_e, "\0");
-	free(num);
-
-	return (msg_e);
+	_eputs(info->fname);
+	_eputs(": ");
+	print_d(info->line_count, STDERR_FILENO);
+	_eputs(": ");
+	_eputs(info->argv[0]);
+	_eputs(": ");
+	_eputs(estr);
 }
 
 /**
- * fail_error - no access error message for path and denied
- * @cli_frame: data
- * Return: correct error message
+ * print_d - function prints decimal (integer) no (base 10)
+ *
+ * @input: is the input
+ *
+ * @fd: is the filedescriptor to write to
+ *
+ * Return: is number of characters printed
  */
-
-char *fail_error(cli_data *cli_frame)
+int print_d(int input, int fd)
 {
-	int count;
-	char *num, *msg_e, *in;
+	int (*__putchar)(char) = _putchar;
+	int i, count = 0;
+	unsigned int _abs_, current;
 
-	in = ": Permission denied\n";
-
-	num = _to_string(cli_frame->count);
-	count = _strlen(cli_frame->arg_v[0]) + _strlen(num);
-	count += 24 + _strlen(cli_frame->arguments[0]);
-	msg_e = malloc((count + 1) * sizeof(char));
-	if (msg_e == 0)
+	if (fd == STDERR_FILENO)
+		__putchar = _eputchar;
+	if (input < 0)
 	{
-		free(msg_e);
-		free(num);
-		return (NULL);
+		_abs_ = -input;
+		__putchar('-');
+		count++;
 	}
-	_strcpy(msg_e, cli_frame->arg_v[0]);
-	_strcat(msg_e, ": ");
-	_strcat(msg_e, num);
-	_strcat(msg_e, ": ");
-	_strcat(msg_e, cli_frame->arguments[0]);
-	_strcat(msg_e, in);
-	_strcat(msg_e, "\0");
-	free(num);
-	return (msg_e);
+	else
+		_abs_ = input;
+	current = _abs_;
+	for (i = 1000000000; i > 1; i /= 10)
+	{
+		if (_abs_ / i)
+		{
+			__putchar('0' + current / i);
+			count++;
+		}
+		current %= i;
+	}
+	__putchar('0' + current);
+	count++;
+
+	return (count);
+}
+
+/**
+ * convert_number - converter function, clone of itoa
+ *
+ * @num: is number
+ *
+ * @base:is base
+ *
+ * @flags: is argument flags
+ *
+ * Return: is string
+ */
+char *convert_number(long int num, int base, int flags)
+{
+	static char *array;
+	static char buffer[50];
+	char sign = 0;
+	char *ptr;
+	unsigned long n = num;
+
+	if (!(flags & CONVERT_UNSIGNED) && num < 0)
+	{
+		n = -num;
+		sign = '-';
+
+	}
+	array = flags & CONVERT_LOWERCASE ? "0123456789abcdef" : "0123456789ABCDEF";
+	ptr = &buffer[49];
+	*ptr = '\0';
+
+	do	{
+		*--ptr = array[n % base];
+		n /= base;
+	} while (n != 0);
+
+	if (sign)
+		*--ptr = sign;
+	return (ptr);
+}
+
+/**
+ * remove_comments - it replaces first instance of '#' with '\0'
+ *
+ * @buf: is address of the string to modify
+ *
+ * Return: 0 Always;
+ */
+void remove_comments(char *buf)
+{
+	int i;
+
+	for (i = 0; buf[i] != '\0'; i++)
+		if (buf[i] == '#' && (!i || buf[i - 1] == ' '))
+		{
+			buf[i] = '\0';
+			break;
+		}
 }

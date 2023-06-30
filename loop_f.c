@@ -1,116 +1,163 @@
-#include "main.h"
+#include "shell.h"
 
 /**
- * rm_commnt - remove input comments
- * @str: str input
- * Return: string with deleted comment
+ * hsh - is main shell loop
+ * @info: is the parameter & return info struct
+ * @av: is the argument vector from main()
+ *
+ * Return: 0 on success, 1 on error, or error code
  */
-
-char *rm_commnt(char *str)
+int hsh(info_t *info, char **av)
 {
-	int idx, count;
+	ssize_t r = 0;
+	int builtin_ret = 0;
 
-	count = 0;
-	for (idx = 0; str[idx]; idx++)
+	while (r != -1 && builtin_ret != -2)
 	{
-		if (str[idx] == '#')
+		clear_info(info);
+		if (interactive(info))
+			_puts("$ ");
+		_eputchar(BUF_FLUSH);
+		r = get_input(info);
+		if (r != -1)
 		{
-			if (idx == 0)
-			{
-				free(str);
-				return (NULL);
-			}
-
-			if (str[idx - 1] == ' ' || str[idx - 1] == '\t' || str[idx - 1] == ';')
-				count = idx;
+			set_info(info, av);
+			builtin_ret = find_builtin(info);
+			if (builtin_ret == -1)
+				find_cmd(info);
 		}
+		else if (interactive(info))
+			_putchar('\n');
+		free_info(info, 0);
 	}
-
-	if (count != 0)
+	write_history(info);
+	free_info(info, 1);
+	if (!interactive(info) && info->status)
+		exit(info->status);
+	if (builtin_ret == -2)
 	{
-		str = _realloc(str, idx, count + 1);
-		str[count] = '\0';
+		if (info->err_num == -1)
+			exit(info->status);
+		exit(info->err_num);
 	}
-
-	return (str);
+	return (builtin_ret);
 }
 
 /**
- * itr_cmd_l - loops through the comnd line
- * @cli_frame: input data
- * Return: 0 - null
+ * find_builtin -it finds a builtin command
+ *
+ * @info: is the parameter & return info struct
+ *
+ * Return: -1 if builtin not found,
+ * 	0 if builtin executed successfully,
+ * 	1 if builtin found but not successful,
+ * 	2 if builtin signals exit()
  */
-
-void itr_cmd_l(cli_data *cli_frame)
+int find_builtin(info_t *info)
 {
-	int count, last;
-	char *str;
+	int i, built_in_ret = -1;
+	builtin_table builtintbl[] = {
+		{"exit", _myexit},
+		{"env", _myenv},
+		{"help", _myhelp},
+		{"history", _myhistory},
+		{"setenv", _mysetenv},
+		{"unsetenv", _myunsetenv},
+		{"cd", _mycd},
+		{"alias", _myalias},
+		{NULL, NULL}
+	};
 
-	count = 1;
-	while (count == 1)
-	{
-		write(STDIN_FILENO, ": ) ", 4);
-		str = read_in_str(&last);
-		if (last != -1)
+	for (i = 0; builtintbl[i].type; i++)
+		if (_strcmp(info->argv[0], builtintbl[i].type) == 0)
 		{
-			str = rm_commnt(str);
-			if (str == NULL)
-				continue;
-
-			if (sytx_err_check(cli_frame, str) == 1)
-			{
-				cli_frame->status = 2;
-				free(str);
-				continue;
-			}
-			str = str_var_func(str, cli_frame);
-			count = sep_cmdl(cli_frame, str);
-			cli_frame->count += 1;
-			free(str);
+			info->line_count++;
+			built_in_ret = builtintbl[i].func(info);
+			break;
 		}
-		else
+	return (built_in_ret);
+}
+
+/**
+ * find_cmd - it finds a command in PATH
+ *
+ * @info: the parameter & return info struct
+ *
+ * Return: void
+ */
+void find_cmd(info_t *info)
+{
+	char *path = NULL;
+	int i, k;
+
+	info->path = info->argv[0];
+	if (info->linecount_flag == 1)
+	{
+		info->line_count++;
+		info->linecount_flag = 0;
+	}
+	for (i = 0, k = 0; info->arg[i]; i++)
+		if (!is_delim(info->arg[i], " \t\n"))
+			k++;
+	if (!k)
+		return;
+
+	path = find_path(info, _getenv(info, "PATH="), info->argv[0]);
+	if (path)
+	{
+		info->path = path;
+		fork_cmd(info);
+	}
+	else
+	{
+		if ((interactive(info) || _getenv(info, "PATH=")
+					|| info->argv[0][0] == '/') && is_cmd(info, info->argv[0]))
+			fork_cmd(info);
+		else if (*(info->arg) != '\n')
 		{
-			count = 0;
-			free(str);
+			info->status = 127;
+			print_error(info, "not found\n");
 		}
 	}
 }
 
 /**
- * main_cd - changes directry
- * @cli_frame: input data
- * Return: 1 on success
+ * fork_cmd - forks exec thread to run cmd
+ *
+ * @info: is the parameter & return info struct
+ *
+ * Return: void
  */
-
-int main_cd(cli_data *cli_frame)
+void fork_cmd(info_t *info)
 {
-	int chek1, check2, check_symb;
-	char *wd;
+	pid_t child_pid;
 
-	wd = cli_frame->arguments[1];
-
-	if (wd != NULL)
+	child_pid = fork();
+	if (child_pid == -1)
 	{
-		check_symb = _strcmp("--", wd);
-		check2 = _strcmp("~", wd);
-		chek1 = _strcmp("$HOME", wd);
+		/* TODO: THE ERROR FUNCTION */
+		perror("Error:");
+		return;
 	}
-	if (wd == NULL || !check_symb || !check2 || !chek1)
+	if (child_pid == 0)
 	{
-		cd_home_dir(cli_frame);
-		return (1);
+		if (execve(info->path, info->argv, get_environ(info)) == -1)
+		{
+			free_info(info, 1);
+			if (errno == EACCES)
+				exit(126);
+			exit(1);
+		}
+		/* TODO: THE ERROR FUNCTION */
 	}
-	if (_strcmp("-", wd) == 0)
+	else
 	{
-		cd_before(cli_frame);
-		return (1);
+		wait(&(info->status));
+		if (WIFEXITED(info->status))
+		{
+			info->status = WEXITSTATUS(info->status);
+			if (info->status == 126)
+				print_error(info, "Permission denied\n");
+		}
 	}
-	if (_strcmp("..", wd) == 0 || _strcmp(".", wd) == 0)
-	{
-		cd_parent(cli_frame);
-		return (1);
-	}
-
-	cd_dir(cli_frame);
-	return (1);
 }

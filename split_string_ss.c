@@ -1,208 +1,91 @@
-#include "main.h"
+#include "shell.h"
 
 /**
- * str_swp - swaps & and | characters
- * @str: str input
- * @typ: type of swap
- * Return: the string swppd
+ * _strcpy - it copies a string
+ * @dest: is the destination
+ * @src: is the source
+ *
+ * Return: the pointer to destination
  */
-
-char *str_swp(char *str, int typ)
+char *_strcpy(char *dest, char *src)
 {
-	int idx;
+	int i = 0;
 
-	if (typ == 0)
+	if (dest == src || src == 0)
+		return (dest);
+	while (src[i])
 	{
-		for (idx = 0; str[idx]; idx++)
-		{
-			if (str[idx] == '|')
-			{
-				if (str[idx + 1] != '|')
-					str[idx] = 16;
-				else
-					idx++;
-			}
-			if (str[idx] == '&')
-			{
-				if (str[idx + 1] != '&')
-					str[idx] = 12;
-				else
-					idx++;
-			}
-		}
+		dest[i] = src[i];
+		i++;
 	}
-	else
-	{
-		for (idx = 0; str[idx]; idx++)
-		{
-			str[idx] = (str[idx] == 12 ? '&' : str[idx]);
-			str[idx] = (str[idx] == 16 ? '|' : str[idx]);
-		}
-	}
-	return (str);
+	dest[i] = 0;
+	return (dest);
 }
 
 /**
- * add_to_list - includes cmd lines and separators to list
- * @sep_h: list for separators head
- * @list_h: cmd list head
- * @str: str input
- * Return: 0 - null
+ * _strdup - it duplicates a string
+ *
+ * @str: is the string to duplicate
+ *
+ * Return: the pointer to the duplicated string
  */
-
-void add_to_list(separators_t **sep_h, command_lines_t **list_h, char *str)
+char *_strdup(const char *str)
 {
-	char *s;
-	int idx;
+	int length = 0;
+	char *ret;
 
-	str = str_swp(str, 0);
-	for (idx = 0; str[idx]; idx++)
-	{
-		if (str[idx] == ';')
-			append_sep(sep_h, str[idx]);
-
-		if (str[idx] == '|' || str[idx] == '&')
-		{
-			append_sep(sep_h, str[idx]);
-			idx++;
-		}
-	}
-
-	s = _strtok(str, ";|&");
-	do {
-		s = str_swp(s, 1);
-		append_cmdl(list_h, s);
-		s = _strtok(NULL, ";|&");
-	} while (s != NULL);
-
+	if (str == NULL)
+		return (NULL);
+	while (*str++)
+		length++;
+	ret = malloc(sizeof(char) * (length + 1));
+	if (!ret)
+		return (NULL);
+	for (length++; length--;)
+		ret[length] = *--str;
+	return (ret);
 }
 
 /**
- * next_cmd - proceeds to follow stored cmd line
- * @sep_l: list for separators
- * @llist: list for cmd line
- * @cli_frame: data
- * Return: 0 - null
+ * _puts - prints the input string
+ *
+ * @str: is the string to be printed
+ *
+ * Return: Nothing
  */
-
-void next_cmd(separators_t **sep_l, command_lines_t **llist, cli_data *cli_frame)
+void _puts(char *str)
 {
-	command_lines_t *cmd_lt;
-	separators_t *sep_lt;
-	int count;
+	int i = 0;
 
-	count = 1;
-	sep_lt = *sep_l;
-	cmd_lt = *llist;
-
-	while (sep_lt != NULL && count)
+	if (!str)
+		return;
+	while (str[i] != '\0')
 	{
-		if (cli_frame->status == 0)
-		{
-			if (sep_lt->sep_value == ';' || sep_lt->sep_value == '&')
-				count = 0;
-			if (sep_lt->sep_value == '|')
-				cmd_lt = cmd_lt->next, sep_lt = sep_lt->next;
-		}
-		else
-		{
-			if (sep_lt->sep_value == ';' || sep_lt->sep_value == '|')
-				count = 0;
-			if (sep_lt->sep_value == '&')
-				cmd_lt = cmd_lt->next, sep_lt = sep_lt->next;
-		}
-		if (sep_lt != NULL && !count)
-			sep_lt = sep_lt->next;
+		_putchar(str[i]);
+		i++;
 	}
-
-	*sep_l = sep_lt;
-	*llist = cmd_lt;
 }
 
 /**
- * sep_cmdl - divides cmd lines based on sep and rums them
- * @cli_frame: data
- * @str: str input
- * Return: 1 on success, 0 on exit
+ * _putchar - it writes the character c to stdout
+ *
+ * @c: is the character to print
+ *
+ * Return: 1 On success.
+ *
+ * On error, -1 is returned, and errno is set appropriately.
  */
-
-int sep_cmdl(cli_data *cli_frame, char *str)
+int _putchar(char c)
 {
+	static int i;
+	static char buf[WRITE_BUF_SIZE];
 
-	separators_t *sep_h, *sep_l;
-	command_lines_t *list_h, *llist;
-	int loop;
-
-	sep_h = NULL;
-	list_h = NULL;
-
-	add_to_list(&sep_h, &list_h, str);
-
-	sep_l = sep_h;
-	llist = list_h;
-
-	while (llist != NULL)
+	if (c == BUF_FLUSH || i >= WRITE_BUF_SIZE)
 	{
-		cli_frame->input = llist->curr_line;
-		cli_frame->arguments = str_to_toks(cli_frame->input);
-		loop = check_builtin(cli_frame);
-		free(cli_frame->arguments);
-
-		if (loop == 0)
-			break;
-
-		next_cmd(&sep_l, &llist, cli_frame);
-
-		if (llist != NULL)
-			llist = llist->next;
+		write(1, buf, i);
+		i = 0;
 	}
-
-	free_separators_t(&sep_h);
-	free_command_lines_t(&list_h);
-
-	if (loop == 0)
-		return (0);
+	if (c != BUF_FLUSH)
+		buf[i++] = c;
 	return (1);
-}
-
-/**
- * str_to_toks - turns str input to tokens
- * @str: str input.
- * Return: tokenized string
- */
-
-char **str_to_toks(char *str)
-{
-	char *one_tok;
-	char **toks;
-	size_t byt_s, idx;
-
-	byt_s = TOKEN_BUFF;
-	toks = malloc(sizeof(char *) * (byt_s));
-	if (toks == NULL)
-	{
-		write(STDERR_FILENO, ": memory allocation error\n", 18);
-		exit(EXIT_FAILURE);
-	}
-
-	one_tok = _strtok(str, TOKEN_DELIM);
-	toks[0] = one_tok;
-
-	for (idx = 1; one_tok != NULL; idx++)
-	{
-		if (idx == byt_s)
-		{
-			byt_s += TOKEN_BUFF;
-			toks = realloc_dptr(toks, idx, sizeof(char *) * byt_s);
-			if (toks == NULL)
-			{
-				write(STDERR_FILENO, ": memory allocation error\n", 18);
-				exit(EXIT_FAILURE);
-			}
-		}
-		one_tok = _strtok(NULL, TOKEN_DELIM);
-		toks[idx] = one_tok;
-	}
-
-	return (toks);
 }

@@ -1,73 +1,78 @@
-#include "main.h"
+#include "shell.h"
 
 /**
- * check_env_v - evaluates for env variables
- * @var_e: env var name
- * @str: name to evaluate
- * Return: len if equal, 0 if fail
+ * clear_info - it initializes info_t struct
+ *
+ * @info: is the struct address
  */
-
-int check_env_v(const char *var_e, const char *str)
+void clear_info(info_t *info)
 {
-	int idx;
-
-	for (idx = 0; var_e[idx] != '='; idx++)
-	{
-		if (var_e[idx] != str[idx])
-		{
-			return (0);
-		}
-	}
-	return (idx + 1);
+	info->arg = NULL;
+	info->argv = NULL;
+	info->path = NULL;
+	info->argc = 0;
 }
 
 /**
- * _env - returns env var
- * @cli_frame: data
- * Return: 1 on success
+ * set_info - it initializes info_t struct
+ *
+ * @info: is struct address
+ *
+ * @av: the argument vector
  */
-
-int _env(cli_data *cli_frame)
+void set_info(info_t *info, char **av)
 {
-	int idx, idy;
+	int i = 0;
 
-	for (idx = 0; cli_frame->_environ[idx]; idx++)
+	info->fname = av[0];
+	if (info->arg)
 	{
-		idy = 0;
-		while (cli_frame->_environ[idx][idy])
-			idy++;
+		info->argv = strtow(info->arg, " \t");
+		if (!info->argv)
+		{
 
-		write(STDOUT_FILENO, cli_frame->_environ[idx], idy);
-		write(STDOUT_FILENO, "\n", 1);
+			info->argv = malloc(sizeof(char *) * 2);
+			if (info->argv)
+			{
+				info->argv[0] = _strdup(info->arg);
+				info->argv[1] = NULL;
+			}
+		}
+		for (i = 0; info->argv && info->argv[i]; i++);
+		info->argc = i;
+
+		replace_alias(info);
+		replace_vars(info);
 	}
-	cli_frame->status = 0;
-
-	return (1);
 }
 
 /**
- * _getenv - gethers correct env variable
- * @cmd_name: name to evaluate
- * @_environ: env variable
- * Return: env var if found, NULL on fail
+ * free_info - it frees info_t struct fields
+ *
+ * @info: is the struct address
+ *
+ * @all: is true if freeing all fields
  */
-
-char *_getenv(const char *cmd_name, char **_environ)
+void free_info(info_t *info, int all)
 {
-	char *str;
-	int idx, count;
-
-	str = NULL;
-	count = 0;
-
-	for (idx = 0; _environ[idx]; idx++)
+	ffree(info->argv);
+	info->argv = NULL;
+	info->path = NULL;
+	if (all)
 	{
-		count = check_env_v(_environ[idx], cmd_name);
-		if (count)
-		{
-			str = _environ[idx];
-			break;
-		}
+		if (!info->cmd_buf)
+			free(info->arg);
+		if (info->env)
+			free_list(&(info->env));
+		if (info->history)
+			free_list(&(info->history));
+		if (info->alias)
+			free_list(&(info->alias));
+		ffree(info->environ);
+		info->environ = NULL;
+		bfree((void **)info->cmd_buf);
+		if (info->readfd > 2)
+			close(info->readfd);
+		_putchar(BUF_FLUSH);
 	}
-	return (str + count);
 }
